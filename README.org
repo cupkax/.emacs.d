@@ -6,28 +6,30 @@
 - [[#initial][Initial]]
   - [[#lexical-binding][Lexical Binding]]
   - [[#garbage-collection][Garbage Collection]]
-  - [[#start-time][Start Time]]
   - [[#define-constants][Define Constants]]
-  - [[#clean-emacsd][Clean .emacs.d]]
-    - [[#autosave][Autosave]]
-    - [[#backups][Backups]]
-    - [[#history][History]]
-    - [[#recent-files][Recent Files]]
-    - [[#custom-file][Custom File]]
   - [[#utf-8-unix-system][=utf-8-unix= System]]
   - [[#set-default-language][Set Default Language]]
   - [[#c-z-undo][C-z undo]]
   - [[#uniform-starting-directory][Uniform Starting Directory]]
+  - [[#restart-emacs-with-debug][Restart Emacs with Debug]]
 - [[#package-management][Package Management]]
   - [[#configure-package-manager][Configure Package Manager]]
   - [[#bootstrap-straightel][Bootstrap =Straight.el=]]
   - [[#use-package][Use Package]]
   - [[#libraries][Libraries]]
+- [[#clean-emacsd][Clean .emacs.d]]
+  - [[#autosave][Autosave]]
+  - [[#backups][Backups]]
+  - [[#history][History]]
+  - [[#recent][Recent]]
+  - [[#custom-file][Custom File]]
 - [[#personal-information][Personal Information]]
 - [[#uiux--other-visuals][UI/UX & Other Visuals]]
+  - [[#autorevert][Autorevert]]
   - [[#aesthetic-changes][Aesthetic changes]]
     - [[#defaults][Defaults]]
     - [[#cursor][Cursor]]
+    - [[#line-numbers][Line Numbers]]
   - [[#fonts-and-icons][Fonts and Icons]]
     - [[#fonts][Fonts]]
     - [[#all-the-icons][All the icons]]
@@ -35,6 +37,7 @@
   - [[#dashboard][Dashboard]]
   - [[#themes][Themes]]
   - [[#modeline][Modeline]]
+    - [[#eldoc][Eldoc]]
     - [[#doom-modeline][Doom Modeline]]
     - [[#current-time][Current Time]]
     - [[#yesno---yn][Yes/No -> y/n]]
@@ -42,14 +45,31 @@
 - [[#bindings][Bindings]]
   - [[#which-key][Which Key]]
   - [[#esc-cancel][ESC Cancel]]
-  - [[#evil][Evil]]
+  - [[#hydra][Hydra]]
   - [[#general][General]]
+  - [[#evil][Evil]]
+    - [[#initial-setup][Initial setup]]
+    - [[#evil-escape][Evil Escape]]
+    - [[#evil-anzu][Evil Anzu]]
+    - [[#evil-nerd-commenter][Evil Nerd Commenter]]
+    - [[#evil-matchit][Evil Matchit]]
+    - [[#evil-surround][Evil Surround]]
+    - [[#evil-goggles][Evil Goggles]]
+    - [[#evil-indent-plus][Evil Indent Plus]]
+    - [[#evil-iedit-state][Evil Iedit State]]
+    - [[#evil-numbers][Evil Numbers]]
+    - [[#evil-args][Evil Args]]
+    - [[#evil-mc][Evil MC]]
+    - [[#evil-lion][Evil Lion]]
+    - [[#evil-owl][Evil Owl]]
+    - [[#evil-collection][Evil Collection]]
 - [[#buffer-and-window-management][Buffer and Window Management]]
   - [[#window-management][Window Management]]
     - [[#window-history][Window History]]
   - [[#buffer-management][Buffer Management]]
-    - [[#bufler][Bufler]]
+    - [[#buffer-functions][Buffer Functions]]
 - [[#navigation][Navigation]]
+  - [[#imenu][IMenu]]
   - [[#helm][Helm]]
   - [[#ivy][Ivy]]
     - [[#basic-setup][Basic Setup]]
@@ -60,11 +80,15 @@
     - [[#ivy-posframe][Ivy-Posframe]]
     - [[#counsel][Counsel]]
     - [[#flx][Flx]]
+  - [[#misc][Misc.]]
+    - [[#saveplace][Saveplace]]
 - [[#development][Development]]
   - [[#company][Company]]
   - [[#languages][Languages]]
     - [[#language-server-protocol][Language Server Protocol]]
+    - [[#lisp][Lisp]]
   - [[#productivity][Productivity]]
+    - [[#syntax-check][Syntax Check]]
     - [[#helpful][Helpful]]
     - [[#format-all][Format All]]
     - [[#indentation][Indentation]]
@@ -87,13 +111,19 @@
     - [[#org-noter-pdftools][Org-Noter-PDFTools]]
   - [[#toc][TOC]]
 - [[#writing][Writing]]
+  - [[#dictionary][Dictionary]]
+    - [[#ispell][iSpell]]
   - [[#olivetti][Olivetti]]
   - [[#line-spacing][Line Spacing]]
   - [[#export][Export]]
     - [[#pandoc][Pandoc]]
-  - [[#default-text-scaling][Default Text Scaling]]
+  - [[#text-scaling][Text Scaling]]
+    - [[#default-text-scale][Default Text Scale]]
+    - [[#change-text-scale][Change Text Scale]]
 - [[#pdf-1][PDF]]
   - [[#pdf-tools][PDF Tools]]
+- [[#applications][Applications]]
+  - [[#calendar][Calendar]]
 - [[#start-server][Start Server]]
 - [[#end][End]]
   - [[#message-startup-time][Message Startup Time]]
@@ -134,11 +164,6 @@
   (add-hook 'minibuffer-exit-hook #'cpkx/restore-garbage-collection)
 #+end_src
 
-** Start Time
-#+begin_src emacs-lisp
-  (setq emacs-load-start-time (current-time))
-#+end_src
-
 ** Define Constants
 #+begin_src emacs-lisp
 (defconst *sys/win32*
@@ -166,53 +191,6 @@
        (not (equal (shell-command-to-string "pip freeze | grep '^PyQt\\|PyQtWebEngine'") "")))
   "Do we have EAF environment setup?")
 #+end_src
-** Clean .emacs.d
-*** Autosave
-#+begin_src emacs-lisp
-  (setq auto-save-visited-mode t)
-  (setq auto-save-default t)
-  (setq auto-save-timeout 20)
-  (setq auto-save-interval 20)
-  (setq auto-save-file-name-transforms
-        '((".*" "~/.emacs.d/auto-save-list/" t)))
-#+end_src
-
-*** Backups
-#+begin_src emacs-lisp
-  (setq backup-directory-alist '(("." . "~/.emacs.d/backups")))
-  (setq kept-new-versions 10)
-  (setq kept-old-versions 0)
-  (setq delete-old-versions t)
-  (setq backup-by-copying t)
-  (setq version-control t)
-  (setq vc-make-backup-files t)
-  (setq delete-by-moving-to-trash t)
-#+end_src
-*** History
-#+begin_src emacs-lisp
-(setq savehist-file "~/.emacs.d/savehist")
-(savehist-mode 1)
-(setq history-length t)
-(setq history-delete-duplicates t)
-(setq savehist-save-minibuffer-history 1)
-(setq savehist-additional-variables
-      '(kill-ring
-        search-ring
-        regexp-search-ring))
-#+end_src
-*** Recent Files
-#+begin_src emacs-lisp
-(require 'recentf)
-(setq recentf-max-saved-items 200
-      recentf-max-menu-items 15)
-(recentf-mode)
-#+end_src
-
-*** Custom File
-#+begin_src emacs-lisp
-(setq custom-file "~/.emacs.d/custom-settings.el")
-(load custom-file t)
-#+end_src
 ** =utf-8-unix= System
 #+begin_src emacs-lisp
   (prefer-coding-system 'utf-8-unix)
@@ -234,6 +212,12 @@
 (setq default-directory "~/" )
 #+end_src
 
+** Restart Emacs with Debug
+#+begin_src emacs-lisp
+  (defun cpkx/restart-emacs-debug-init (&optional args)
+    (interactive)
+    (restart-emacs (cons "--debug-init" args)))
+#+end_src
 * Package Management
 ** Configure Package Manager
 #+begin_src emacs-lisp
@@ -277,6 +261,59 @@
 (use-package diminish :ensure t)
 #+end_src
 
+* Clean .emacs.d
+** Autosave
+#+begin_src emacs-lisp
+  (setq auto-save-visited-mode t)
+  (setq auto-save-default t)
+  (setq auto-save-timeout 20)
+  (setq auto-save-interval 20)
+  (setq auto-save-file-name-transforms
+        '((".*" "~/.emacs.d/auto-save-list/" t)))
+#+end_src
+
+** Backups
+#+begin_src emacs-lisp
+  (setq backup-directory-alist '(("." . "~/.emacs.d/backups")))
+  (setq kept-new-versions 10)
+  (setq kept-old-versions 0)
+  (setq delete-old-versions t)
+  (setq backup-by-copying t)
+  (setq version-control t)
+  (setq vc-make-backup-files t)
+  (setq delete-by-moving-to-trash t)
+#+end_src
+** History
+#+begin_src emacs-lisp
+  (setq savehist-file "~/.emacs.d/savehist")
+  (savehist-mode 1)
+  (setq history-length t)
+  (setq history-delete-duplicates t)
+  (setq savehist-save-minibuffer-history 1)
+  (setq savehist-additional-variables
+        '(kill-ring
+          search-ring
+          regexp-search-ring))
+#+end_src
+** Recent
+#+begin_src emacs-lisp
+  (use-package recentf
+    :ensure nil
+    :init
+    (add-hook 'find-file-hook (lambda () (unless recentf-mode
+                                      (recentf-mode)
+                                      (recentf-track-opened-file))))
+    :config
+    (progn
+      (setq recentf-max-saved-items 2000
+            recentf-auto-cleanup 'never
+            (recentf-mode 1))))
+#+end_src
+** Custom File
+#+begin_src emacs-lisp
+(setq custom-file "~/.emacs.d/custom-settings.el")
+(load custom-file t)
+#+end_src
 * Personal Information
 #+begin_src emacs-lisp
 (setq user-full-name "Vedant Sansare")
@@ -284,6 +321,15 @@
 #+end_src
 
 * UI/UX & Other Visuals
+** Autorevert
+#+begin_src emacs-lisp
+  (use-package autorevert
+    :ensure nil
+    :diminish auto-revert-mode
+    :config
+    (setq auto-revert-interval 0.5)
+    (global-auto-revert-mode))
+#+end_src
 ** Aesthetic changes
 *** Defaults
 #+begin_src emacs-lisp
@@ -291,7 +337,9 @@
   (setq inhibit-startup-echo-area-message t)
   (setq inhibit-startup-message t)
   (setq initial-scratch-message nil)
-  (setq-default indent-tabs-mode nil)
+  (setq initial-major-mode 'emacs-lisp-mode)
+  ;; save system clipboard contents to emacs kill ring
+  (setq save-interprogram-paste-before-kill t)
 
   (setq column-number-mode t)
   (setq size-indication-mode t)
@@ -300,9 +348,6 @@
   (setq pop-up-windows nil)
   (tool-bar-mode 0)
   (scroll-bar-mode 0)
-
-  ;; Underline line at descent position, not baseline position
-  (setq x-underline-at-descent-line t)
 #+end_src
 
 *** Cursor
@@ -316,6 +361,26 @@
     (beacon-mode 1))
 #+end_src
 
+*** Line Numbers
+#+begin_src emacs-lisp
+  (use-package display-line-numbers
+    :if (version<= "26.1" emacs-version)
+    :ghook ('after-init-hook #'global-display-line-numbers-mode)
+    :general
+    (cpkx/leader-keys
+      "tl" 'cpkx/toggle-line-numbers-type)
+    :config
+    (setq display-line-numbers-type 'visual)
+    (defun cpkx/toggle-line-numbers-type ()
+      (interactive)
+      (if (eq display-line-numbers t)
+          (progn
+            (setq display-line-numbers 'visual)
+            (message "show visual line numbers"))
+        (progn
+          (setq display-line-numbers t)
+          (message "Show absolute line numbers")))))
+#+end_src
 ** Fonts and Icons
 *** Fonts
 **** Font Face
@@ -369,7 +434,7 @@
 Make some word or string show as pretty Unicode symbols.
 #+begin_src emacs-lisp
   (global-prettify-symbols-mode 1)
-  (defun add-pretty-lambda ()
+  (defun cpkx/add-pretty-lambda ()
     (setq prettify-symbols-alist
           '(
             ("lambda" . 955)
@@ -379,8 +444,8 @@ Make some word or string show as pretty Unicode symbols.
             ("<=" . 8804)
             (">=" . 8805)
             )))
-  (add-hook 'prog-mode-hook 'add-pretty-lambda)
-  (add-hook 'org-mode-hook 'add-pretty-lambda)
+  (add-hook 'prog-mode-hook 'cpkx/add-pretty-lambda)
+  (add-hook 'org-mode-hook  'cpkx/add-pretty-lambda)
 #+end_src
 
 ** Dashboard
@@ -415,6 +480,14 @@ Make some word or string show as pretty Unicode symbols.
     (load-theme 'doom-dracula t))
 #+end_src
 ** Modeline
+*** Eldoc
+#+begin_src emacs-lisp
+  (use-package eldoc
+    :ghook ('(emacs-lisp-mode-hook
+              lisp-interaction-mode-hook
+              ielm-mode-hook
+              eval-expression-minibuffer-setup-hook)))
+#+end_src
 *** Doom Modeline
 #+begin_src emacs-lisp
   (use-package doom-modeline
@@ -431,6 +504,7 @@ Make some word or string show as pretty Unicode symbols.
 #+end_src
 
 *** Current Time
+**** Time modeline parameters
 #+begin_src emacs-lisp
   (setq display-time-24hr-format t)
   (setq display-time-default-load-average nil)
@@ -438,6 +512,12 @@ Make some word or string show as pretty Unicode symbols.
   (setq display-time-mode t)
 #+end_src
 
+**** Show Current Time function
+#+begin_src emacs-lisp
+  (defun cpkx/show-current-time ()
+    (interactive)
+    (message (current-time-string)))
+#+end_src
 *** Yes/No -> y/n
 #+begin_src emacs-lisp
   (fset 'yes-or-no-p 'y-or-n-p)
@@ -466,64 +546,374 @@ Temporary solution to remove buffer face mode from modeline
 #+begin_src emacs-lisp
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+end_src
-
-** Evil
+** Hydra
 #+begin_src emacs-lisp
-  (use-package evil
-    :init
-    (setq evil-want-integration t)
-    (setq evil-want-keybinding nil)
-    (setq evil-want-C-u-scroll t)
-    (setq evil-want-C-i-jump nil)
-    (setq evil-respect-visual-line-mode t)
+  (use-package hydra
     :config
-    (evil-mode 1)
-    (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
-    (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
-
-    ;; Use visual line motions even outside of visual-line-mode buffers
-    (evil-global-set-key 'motion "j" 'evil-next-visual-line)
-    (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
-
-    (evil-set-initial-state 'messages-buffer-mode 'normal)
-    (evil-set-initial-state 'dashboard-mode 'normal))
-
-  (use-package evil-collection
-    :after evil
-    :custom
-    (evil-collection-outline-bind-tab-p nil)
-    :config
-    (evil-collection-init))
+    (setq hydra-hint-display-type 'cpkx/posframe)
+    (defun cpkx/hydra-posframe-show (str)
+      (require 'posframe)
+      (posframe-show
+       " *hydra-posframe*"
+       :string str
+       :point (point)
+       :internal-border-color "gray50"
+       :internal-border-width 2
+       :poshandler #'posframe-poshandler-frame-top-center))
+    (defun cpkx/hydra-posframe-hide ()
+      (posframe-hide " *hydra-posframe*"))
+    (setq hydra-hint-display-alist
+          (list (list 'cpkx/posframe #'cpkx/hydra-posframe-show #'cpkx/hydra-posframe-hide))
+          hydra--work-around-dedicated nil))
 #+end_src
-
 ** General
 #+begin_src emacs-lisp
   (use-package general
     :config
-    (general-evil-setup t)
-
-    (general-create-definer cpkx/leader-key-def
-      :keymaps '(normal insert visual emacs)
-      :prefix "C-SPC")
-      ;:global-prefix "C-SPC")
-
-    (general-create-definer cpkx/ctrl-c-keys
-      :prefix "C-c"))
+    (progn
+      (general-create-definer cpkx/normal-keys
+        :states  'normal
+        :keymaps 'override)
+      (general-create-definer cpkx/motion-keys
+        :states  'motion
+        :keymaps 'override)
+      (general-create-definer cpkx/non-insert-keys
+        :states  '(normal visual motion)
+        :keymaps 'override)
+      (general-create-definer cpkx/leader-keys
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  "SPC"
+        :non-normal-prefix "M-SPC")
+      (general-create-definer cpkx/leader-keys-major-mode
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  ","
+        :non-normal-prefix "M-,")
+      (general-create-definer cpkx/leader-keys-minor-mode
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  ";"
+        :non-normal-prefix "M-;")
+      (general-create-definer cpkx/all-states-keys
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override)))
 #+end_src
 
+** Evil
+*** Initial setup
+#+begin_src emacs-lisp
+  (use-package evil
+    :general
+    (:keymaps 'override
+              :states 'insert
+              "C-j" 'evil-next-line
+              "C-k" 'evil-previous-line
+              "M-o" 'evil-open-below)
+    :init
+    (setq evil-want-keybinding nil)
+    :config
+    (define-key evil-insert-state-map [remap evil-complete-previous] 'hippie-expand)
+    (cpkx/normal-keys
+      "gD" 'xref-find-definitions-other-window
+      "gd" 'xref-find-definitions)
+    (progn
+      (evil-set-initial-state 'pdf-view-mode            'normal)
+      (evil-set-initial-state 'pdf-outline-buffer-mode  'normal)
+      (evil-set-initial-state 'calendar-mode            'normal)
+      (evil-set-initial-state 'pdf-occur-buffer-mode    'normal)
+      (evil-set-initial-state 'imenu-list-major-mode    'normal)
+      (evil-set-initial-state 'neotree-mode             'normal)
+      (evil-set-initial-state 'flycheck-error-list-mode 'normal)
+      (evil-set-initial-state 'nov-mode                 'normal)
+      (evil-set-initial-state 'lsp-ui-imenu-mode        'normal)
+      (evil-set-initial-state 'helpful-mode             'normal)
+      (evil-set-initial-state 'Custom-mode              'normal)
+      (evil-set-initial-state 'occur-mode               'normal)
+      (setq evil-insert-state-cursor '(bar "LimeGreen")
+            evil-normal-state-cursor '(box "darkorange")
+            evil-visual-state-cursor '(box "LightGoldenrod")
+            evil-emacs-state-cursor  '(box "MediumPurple2")
+            evil-echo-state nil)
+   ;;;###autoload
+      (defun cpkx/end-of-buffer ()
+        "Go to beginning of last line in buffer.
+   If last line is empty, go to beginning of penultimate one
+   instead."
+        (interactive)
+        (goto-char (point-max))
+        (beginning-of-line (and (looking-at-p "^$") 0)))
+   ;;;###autoload
+      (evil-define-motion cpkx/evil-goto-line (count)
+        "Go to the first non-blank character of line COUNT.
+   By default the last line."
+        :jump t
+        :type line
+        (if (null count)
+            (with-no-warnings (cpkx/end-of-buffer))
+          (goto-char (point-min))
+          (forward-line (1- count)))
+        (evil-first-non-blank))
+
+      (global-set-key [remap evil-goto-line] #'cpkx/evil-goto-line)
+      (evil-mode 1)))
+#+end_src
+
+*** Evil Escape
+#+begin_src emacs-lisp
+  (use-package evil-escape
+    :diminish evil-escape-mode
+    :init
+    (with-eval-after-load 'company
+      (add-hook 'evil-normal-state-entry-hook #'company-cancel))
+    (setq evil-escape-key-sequence "jk"
+          evil-escape-unordered-key-sequence t)
+    :config
+    (evil-escape-mode))
+#+end_src
+*** Evil Anzu
+#+begin_src emacs-lisp
+  (use-package evil-anzu
+    :ghook ('after-init-hook #'global-anzu-mode)
+    :diminish anzu-mode
+    :general
+    (cpkx/leader-keys
+      "rs" 'anzu-query-replace
+      "rr" 'anzu-query-replace-regexp)
+    :config
+    (global-set-key [remap query-replace] 'anzu-query-replace)
+    (global-set-key [remap query-replace-regexp] 'anzu-query-replace-regexp))
+#+end_src
+
+*** Evil Nerd Commenter
+#+begin_src emacs-lisp
+  (use-package evil-nerd-commenter
+    :general
+    (cpkx/leader-keys
+      ";" 'evilnc-comment-operator
+      "M-;" 'evilnc-copy-and-comment-operator
+      "cl" 'evilnc-comment-or-uncomment-lines
+      "cp" 'evilnc-comment-or-uncomment-paragraphs))
+#+end_src
+*** Evil Matchit
+#+begin_src emacs-lisp
+  (use-package evil-matchit
+    :general
+    (:keymaps 'override
+     :states '(normal visual)
+     "%" 'evilmi-jump-items)
+    (:keymaps 'evil-inner-text-objects-map
+     "%" 'evilmi-jump-items)
+    (:keymaps 'evil-outer-text-objects-map
+     "%" 'evilmi-jump-items)
+    :config
+    (setq evilmi-always-simple-jump t)
+    (global-evil-matchit-mode))
+#+end_src
+
+*** Evil Surround
+#+begin_src emacs-lisp
+  (use-package evil-surround
+    :after evil
+    :config
+    (global-evil-surround-mode 1))
+#+end_src
+*** Evil Goggles
+#+begin_src emacs-lisp
+  (use-package evil-goggles
+    :diminish evil-goggles-mode
+    :after evil
+    :config
+    (evil-goggles-mode))
+#+end_src
+*** Evil Indent Plus
+#+begin_src emacs-lisp
+  (use-package evil-indent-plus
+    :general
+    (:keymaps 'evil-inner-text-objects-map
+              "i" 'evil-indent-plus-i-indent
+              "I" 'evil-indent-plus-i-indent-up
+              "J" 'evil-indent-plus-i-indent-up-down)
+    (:keymaps 'evil-outer-text-objects-map
+              "i" 'evil-indent-plus-a-indent
+              "I" 'evil-indent-plus-a-indent-up
+              "J" 'evil-indent-plus-a-indent-up-down))
+#+end_src
+*** Evil Iedit State
+#+begin_src emacs-lisp
+  (use-package evil-iedit-state
+    :general
+    (cpkx/leader-keys "se" 'evil-iedit-state/iedit-mode)
+    :config
+    (setq iedit-current-symbol-default t
+          iedit-only-at-symbol-boundaries t
+          iedit-toggle-key-default nil))
+#+end_src
+*** Evil Numbers
+#+begin_src emacs-lisp
+  (use-package evil-numbers
+    :general
+    (cpkx/leader-keys
+      "n" '(:ignore t :wk "numbers")
+      "ni" 'evil-numbers/inc-at-pt
+      "nd" 'evil-numbers/dec-at-pt
+      "n." 'hydra-evil-numbers/body)
+    :config
+    (defhydra hydra-evil-numbers (:hint nil)
+      "
+  Evil Numbers: [_i_] increase [_d_] decrease [0..9] prefix [_q_] exit
+  "
+      ("i" evil-numbers/inc-at-pt)
+      ("d" evil-numbers/dec-at-pt)
+      ("q" nil :exit t)))
+#+end_src
+*** Evil Args
+#+begin_src emacs-lisp
+  (use-package evil-args
+    :after evil
+    :general
+    (cpkx/normal-keys
+      "gL" 'evil-forward-arg
+      "gh" 'evil-backward-arg
+      "gK" 'evil-jump-out-args)
+    :config
+    (define-key evil-inner-text-objects-map "a" 'evil-inner-arg)
+    (define-key evil-outer-text-objects-map "a" 'evil-outer-arg))
+#+end_src
+*** Evil MC
+#+begin_src emacs-lisp
+  (use-package evil-mc
+    :diminish evil-mc-mode
+    :commands (evil-mc-make-cursor-here
+               evil-mc-make-all-cursors
+               evil-mc-undo-all-cursors evil-mc-pause-cursors
+               evil-mc-resume-cursors evil-mc-make-and-goto-first-cursor
+               evil-mc-make-and-goto-last-cursor
+               evil-mc-make-cursor-move-next-line
+               evil-mc-make-cursor-move-prev-line evil-mc-make-cursor-at-pos
+               evil-mc-has-cursors-p evil-mc-make-and-goto-next-cursor
+               evil-mc-skip-and-goto-next-cursor evil-mc-make-and-goto-prev-cursor
+               evil-mc-skip-and-goto-prev-cursor evil-mc-make-and-goto-next-match
+               evil-mc-skip-and-goto-next-match evil-mc-skip-and-goto-next-match
+               evil-mc-make-and-goto-prev-match evil-mc-skip-and-goto-prev-match)
+    :init
+    (add-hook 'prog-mode-hook #'evil-mc-mode)
+    (add-hook 'text-mode-hook #'evil-mc-mode)
+    (cpkx/normal-keys
+      "gr" '(:ignore t :wk "evil-mc"))
+    (setq evil-mc-incompatible-minor-modes
+          '(evil-escape-mode
+            aggressive-indent-mode
+            flycheck-mode
+            flyspell-mode
+            haskell-indent-mode
+            haskell-indentation-mode
+            yas-minor-mode)))
+#+end_src
+*** Evil Lion
+#+begin_src emacs-lisp
+  (use-package evil-lion
+    :general
+    (:states '(normal visual)
+             "ga" 'evil-lion-left
+             "gA" 'evil-lion-right)
+    :config
+    (setq evil-lion-left-align-key nil
+          evil-lion-right-align-key nil))
+#+end_src
+*** Evil Owl
+#+begin_src emacs-lisp
+  (use-package evil-owl
+    :diminish: evil-owl-mode
+    :after evil
+    :config
+    (setq evil-owl-register-char-limit 100
+          evil-owl-display-method 'posframe
+          evil-owl-extra-posframe-args '(:internal-border-color "gray50"
+                                                                :internal-border-width 2
+                                                                :width 80))
+    (evil-owl-mode))
+#+end_src
+
+*** Evil Collection
+#+begin_src emacs-lisp
+  (use-package evil-collection
+    :config
+    (with-eval-after-load 'reftex (evil-collection-reftex-setup))
+    (with-eval-after-load 'magit  (evil-collection-magit-todos-setup)))
+#+end_src
 * Buffer and Window Management
 ** Window Management
 *** Window History
 #+begin_src emacs-lisp
-(winner-mode)
+  (use-package winner
+    :ensure nil
+    :init
+    (cpkx/leader-keys
+     "wu" 'winner-undo
+     "wU" 'winner-redo)
+    :config
+    (setq winner-boring-buffers
+          '("*Completions*"
+            "*Compile-Log*"
+            "*inferior-lisp*"
+            "*Fuzzy Completions*"
+            "*Apropos*"
+            "*Help*"
+            "*cvs*"
+            "*Buffer List*"
+            "*Ibuffer*"
+            "*esh command on file*"
+            "*Youdao Dictionary*"
+            "*PDF-Occur*"
+            "*Google Translate*"
+            "*magit.*"
+            ))
+    (winner-mode))
 #+end_src
 ** Buffer Management
-*** Bufler
+*** Buffer Functions
+**** Switch Alternate Buffer
 #+begin_src emacs-lisp
-(use-package bufler)
+  (defun cpkx/alternate-buffer (&optional window)
+    (interactive)
+    (let ((current-buffer (window-buffer window)))
+      (without-purpose (switch-to-buffer
+                        (cl-find-if (lambda (buffer)
+                                      (not (eq buffer current-buffer)))
+                                    (mapcar #'car (window-prev-buffers window)))))))
 #+end_src
-
+**** Kill Buffer
+#+begin_src emacs-lisp
+  (defun cpkx/kill-this-buffer (&optional arg)
+    (interactive "P")
+    (if (window-minibuffer-p)
+        (abort-recursive-edit)
+      (if (equal '(4) arg)
+          (kill-buffer-and-window)
+        (kill-buffer))))
+#+end_src
+**** Maximize Buffer
+#+begin_src emacs-lisp
+  (defun cpkx/toggle-maximize-buffer ()
+    "Maximize buffer"
+    (interactive)
+    (if (and (= 1 (length (window-list)))
+             (assoc ?_ register-alist))
+        (jump-to-register ?_)
+      (progn
+        (window-configuration-to-register ?_)
+        (delete-other-windows))))
+#+end_src
 * Navigation
+** IMenu
+#+begin_src emacs-lisp
+  (use-package imenu
+    :ensure nil
+    :general
+    (cpkx/leader-keys
+      "ji" 'imenu))
+#+end_src
 ** Helm
 #+begin_src emacs-lisp :tangle no
   (use-package helm-bibtex
@@ -674,6 +1064,14 @@ Temporary solution to remove buffer face mode from modeline
     (setq ivy-flx-limit 10000))
 #+end_src
 
+** Misc.
+*** Saveplace
+#+begin_src emacs-lisp
+  (use-package saveplace
+    :ensure nil
+    :config
+    (save-place-mode))
+#+end_src
 * Development
 ** Company
 #+begin_src emacs-lisp
@@ -717,17 +1115,6 @@ Temporary solution to remove buffer face mode from modeline
     (read-process-output-max (* 1024 1024))
     (lsp-eldoc-hook nil))
 
-  (cpkx/leader-key-def
-    "l"  '(:ignore t :which-key "lsp")
-    "d" 'xref-find-definitions
-    "r" 'xref-find-references
-    "n" 'lsp-ui-find-next-reference
-    "p" 'lsp-ui-find-prev-reference
-    "s" 'counsel-imenu
-    "e" 'lsp-ui-flycheck-list
-    "S" 'lsp-ui-sideline-mode
-    "X" 'lsp-execute-code-action)
-
   (use-package lsp-ui
     :after lsp-mode
     :diminish
@@ -747,7 +1134,71 @@ Temporary solution to remove buffer face mode from modeline
     (lsp-ui-doc-show))
 #+end_src
 
+*** Lisp
+#+begin_src emacs-lisp
+  (defun cpkx/lisp-indent-function (indent-point state)
+    (let ((normal-indent (current-column))
+          (orig-point (point)))
+      (goto-char (1+ (elt state 1)))
+      (parse-partial-sexp (point) calculate-lisp-indent-last-sexp 0 t)
+      (cond
+       ((and (elt state 2)
+             (or (not (looking-at "\\sw\\|\\s_"))
+                 (looking-at ":")))
+        (if (not (> (save-excursion (forward-line 1) (point))
+                    calculate-lisp-indent-last-sexp))
+            (progn (goto-char calculate-lisp-indent-last-sexp)
+                   (beginning-of-line)
+                   (parse-partial-sexp (point)
+                                       calculate-lisp-indent-last-sexp 0 t)))
+        (backward-prefix-chars)
+        (current-column))
+       ((and (save-excursion
+               (goto-char indent-point)
+               (skip-syntax-forward " ")
+               (not (looking-at ":")))
+             (save-excursion
+               (goto-char orig-point)
+               (looking-at ":")))
+        (save-excursion
+          (goto-char (+ 2 (elt state 1)))
+          (current-column)))
+       (t
+        (let ((function (buffer-substring (point)
+                                          (progn (forward-sexp 1) (point))))
+              method)
+          (setq method (or (function-get (intern-soft function)
+                                         'lisp-indent-function)
+                           (get (intern-soft function) 'lisp-indent-hook)))
+          (cond ((or (eq method 'defun)
+                     (and (null method)
+                          (> (length function) 3)
+                          (string-match "\\`def" function)))
+                 (lisp-indent-defform state indent-point))
+                ((integerp method)
+                 (lisp-indent-specform method state
+                                       indent-point normal-indent))
+                (method
+                 (funcall method indent-point state))))))))
+
+  (with-eval-after-load 'lisp-mode
+    (setq lisp-indent-function 'cpkx/lisp-indent-function))
+#+end_src
+
 ** Productivity
+*** Syntax Check
+**** Toggle Check
+#+begin_src emacs-lisp
+  (defun cpkx/toggle-syntax-checking ()
+    (interactive)
+    (if (bound-and-true-p flycheck-mode)
+        (progn
+          (flycheck-mode -1)
+          (message "Flycheck mode disabled in current buffer"))
+      (progn
+        (flycheck-mode 1)
+        (message "Flycheck mode enabled in current buffer"))))
+#+end_src
 *** Helpful
 #+begin_src emacs-lisp
   (use-package helpful
@@ -776,12 +1227,25 @@ Temporary solution to remove buffer face mode from modeline
 #+end_src
 
 *** Color Identifiers
+**** Initial Setup
 #+begin_src emacs-lisp
   (use-package color-identifiers-mode
     :diminish color-identifiers-mode
     :hook (prog-mode . color-identifiers-mode))
 #+end_src
 
+**** Toggle Color Indentifiers
+#+begin_src emacs-lisp
+  (defun cpkx/toggle-color-identifiers ()
+    (interactive)
+    (if (bound-and-true-p color-identifiers-mode)
+        (progn
+          (color-identifiers-mode -1)
+          (message "Color identifiers mode disabled in current buffer"))
+      (progn
+        (color-identifiers-mode 1)
+        (message "Color identifiers mode enabled in current buffer"))))
+#+end_src
 *** Parens
 **** Smart Parens
 #+begin_src emacs-lisp
@@ -935,9 +1399,6 @@ Saves
     (setq org-noter-notes-window-location     'horizontal-split))
 #+end_src
 
-#+RESULTS:
-: #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data (:use-package (24555 38012 284150 0) :init (24555 38012 284147 0) :config (24555 38012 284142 0) :config-secs (0 0 4 0) :init-secs (0 0 11 0) :use-package-secs (0 0 58 0)))
-
 ** PDF
 *** Org-PDFTools
 #+begin_src emacs-lisp
@@ -961,6 +1422,73 @@ Saves
 #+end_src
 
 * Writing
+** Dictionary
+*** iSpell
+**** Initial Config
+#+begin_src emacs-lisp
+  (use-package ispell
+    :ensure nil
+    :config
+    (progn
+      (setq ispell-program-name "aspell"
+            ispell-silently-savep t
+            ispell-look-command "/bin/grep"
+            ispell-look-options "-Ei")))
+#+end_src
+**** Lookup words function
+#+begin_src emacs-lisp
+  (defun cpkx/ispell-lookup-words (word &optional lookup-dict)
+    (if (null lookup-dict)
+        (setq lookup-dict (or ispell-complete-word-dict
+                              ispell-alternate-dictionary)))
+    (if lookup-dict
+        (unless (file-readable-p lookup-dict)
+          (error "lookup-words error: Unreadable or missing plain word-list %s."
+                 lookup-dict))
+      (error (concat "lookup-words error: No plain word-list found at system"
+                     "default locations.  "
+                     "Customize `ispell-alternate-dictionary' to set yours.")))
+
+    (let* ((process-connection-type ispell-use-ptys-p)
+           (wild-p (string-match "\\*" word))
+           (look-p (and ispell-look-p
+                        (or ispell-have-new-look (not wild-p))))
+           (prog (if look-p ispell-look-command ispell-grep-command))
+           (args (if look-p ispell-look-options ispell-grep-options))
+           status results loc)
+      (with-temp-buffer
+        (if look-p
+            nil
+          (insert "^" word)
+          (unless wild-p (insert "*"))
+          (insert "$")
+          (while (search-backward "*" nil t) (insert "."))
+          (setq word (buffer-string))
+          (erase-buffer))
+        (setq status (apply 'ispell-call-process prog nil t nil
+                            (nconc (if (and args (> (length args) 0))
+                                       (list args)
+                                     (if look-p nil
+                                       (list "-e")))
+                                   (list word)
+                                   (if lookup-dict (list lookup-dict)))))
+        (if (stringp status)
+            (error "error: %s exited with signal %s"
+                   (file-name-nondirectory prog) status)
+          (goto-char (point-max))
+          (or (bobp) (= (preceding-char) ?\n) (insert ?\n))
+          (while (not (bobp))
+            (setq loc (point))
+            (forward-line -1)
+            (push (buffer-substring-no-properties (point)
+                                                  (1- loc))
+                  results))))
+      (if (and results (string-match ".+: " (car results)))
+          (error "%s error: %s" ispell-grep-command (car results)))
+      results))
+
+  (advice-add 'ispell-lookup-words :override #'cpkx/ispell-lookup-words)
+#+end_src
 ** Olivetti
 #+begin_src emacs-lisp
   (use-package olivetti
@@ -987,11 +1515,25 @@ Saves
     :hook ((text-mode) . pandoc-mode)
     :diminish pandoc-mode)
 #+end_src
-** Default Text Scaling
+** Text Scaling
+*** Default Text Scale
 #+begin_src emacs-lisp
 (use-package default-text-scale
   :config
   (default-text-scale-mode))
+#+end_src
+*** Change Text Scale
+#+begin_src emacs-lisp
+  (defhydra hydra-window-scale ()
+    "window-scale"
+    ("i" (lambda () (interactive) (enlarge-window-horizontally 10)) "in")
+    ("o" (lambda () (interactive) (shrink-window-horizontally 10)) "out")
+    ("I" (lambda () (interactive) (enlarge-window 5)) "IN")
+    ("O" (lambda () (interactive) (shrink-window 5)) "OUT")
+    ("r" balance-windows "reset")
+    ("q" nil "quit"))
+  (cpkx/leader-keys
+    "wz" 'hydra-window-scale/body)
 #+end_src
 * PDF
 ** PDF Tools
@@ -1008,9 +1550,80 @@ Saves
       (add-hook 'pdf-view-mode-hook (lambda () (cua-mode 0)))
       (add-hook 'pdf-view-mode-hook #'pdf-tools-enable-minor-modes)))
 #+end_src
+* Applications
+** Calendar
+#+begin_src emacs-lisp
+  (use-package calendar
+    :ensure nil
+    :commands calendar
+    :config
+    ;; keybindings are copied from evil-collection
+    (cpkx/normal-keys
+      :keymaps 'calendar-mode-map
+      ;; motion
+      "h"   'calendar-backward-day
+      "j"   'calendar-forward-week
+      "k"   'calendar-backward-week
+      "l"   'calendar-forward-day
+      "0"   'calendar-beginning-of-week
+      "^"   'calendar-beginning-of-week
+      "$"   'calendar-end-of-week
+      "["   'calendar-backward-year
+      "]"   'calendar-forward-year
+      "M-<" 'calendar-beginning-of-year
+      "M->" 'calendar-end-of-year
+      "("   'calendar-beginning-of-month
+      ")"   'calendar-end-of-month
+      "<"   'calendar-scroll-right
+      ">"   'calendar-scroll-left
+      "C-b" 'calendar-scroll-right-three-months
+      "C-f" 'calendar-scroll-left-three-months
+      "{"   'calendar-backward-month
+      "}"   'calendar-forward-month
+      "C-k" 'calendar-backward-month
+      "C-j" 'calendar-forward-month
+      "gk"   'calendar-backward-month
+      "gj"   'calendar-forward-month
+
+      ;; visual
+      "v" 'calendar-set-mark
+
+      ;; goto
+      "." 'calendar-goto-today
+      "gd" 'calendar-goto-date ; "gd" in evil-org-agenda, "gd" in Emacs.
+      ;; "gD" 'calendar-other-month ; Not very useful if we have `calendar-goto-date'.
+
+      ;; diary
+      "D" 'diary-view-other-diary-entries
+      "d" 'diary-view-entries
+      "m" 'diary-mark-entries
+      "s" 'diary-show-all-entries
+
+      "u" 'calendar-unmark
+      "x" 'calendar-mark-holidays
+
+      ;; show
+      "gm" 'calendar-lunar-phases ; "gm" in evil-org-agenda.
+      "gs" 'calendar-sunrise-sunset ; "gs" in evil-org-agenda
+      "gh" 'calendar-list-holidays ; "gh" in evil-org-agenda.
+      "ga" 'org-calendar-goto-agenda ; "gc" in evil-org-agenda.
+      "r" 'calendar-cursor-holidays
+
+      ;; refresh
+      "gr" 'calendar-redraw
+
+      "g?" 'calendar-goto-info-node
+      "?" 'calendar-goto-info-node ; Search is not very useful.
+      "M-=" 'calendar-count-days-region
+
+      ;; quit
+      "q" 'calendar-exit))
+#+end_src
 * Start Server
 #+begin_src emacs-lisp
-(server-start)
+  (use-package server
+    :ensure nil
+    :ghook ('after-init-hook #'server-start))
 #+end_src
 * End
 ** Message Startup Time

@@ -6,3 +6,6 @@ early-init.el
 init.el
 recentf
 savehist
+backups
+history
+places
