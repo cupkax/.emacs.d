@@ -11,9 +11,7 @@
   - [[#set-default-language][Set Default Language]]
   - [[#c-z-undo][C-z undo]]
   - [[#uniform-starting-directory][Uniform Starting Directory]]
-  - [[#restart-emacs-with-debug][Restart Emacs with Debug]]
 - [[#package-management][Package Management]]
-  - [[#configure-package-manager][Configure Package Manager]]
   - [[#bootstrap-straightel][Bootstrap =Straight.el=]]
   - [[#use-package][Use Package]]
   - [[#libraries][Libraries]]
@@ -63,13 +61,20 @@
     - [[#evil-lion][Evil Lion]]
     - [[#evil-owl][Evil Owl]]
     - [[#evil-collection][Evil Collection]]
+  - [[#shell-command][Shell Command]]
+  - [[#universal-argument][Universal Argument]]
+  - [[#exit-emacs][Exit Emacs]]
 - [[#buffer-and-window-management][Buffer and Window Management]]
   - [[#window-management][Window Management]]
     - [[#window-history][Window History]]
   - [[#buffer-management][Buffer Management]]
     - [[#buffer-functions][Buffer Functions]]
+    - [[#buffer-bindings][Buffer Bindings]]
 - [[#navigation][Navigation]]
-  - [[#imenu][IMenu]]
+  - [[#emacs-defaults][Emacs Defaults]]
+    - [[#find-file][Find-File]]
+    - [[#imenu][IMenu]]
+    - [[#saveplace][Saveplace]]
   - [[#helm][Helm]]
   - [[#ivy][Ivy]]
     - [[#basic-setup][Basic Setup]]
@@ -80,8 +85,6 @@
     - [[#ivy-posframe][Ivy-Posframe]]
     - [[#counsel][Counsel]]
     - [[#flx][Flx]]
-  - [[#misc][Misc.]]
-    - [[#saveplace][Saveplace]]
 - [[#development][Development]]
   - [[#company][Company]]
   - [[#languages][Languages]]
@@ -95,6 +98,7 @@
     - [[#numericals][Numericals]]
     - [[#color-identifiers][Color Identifiers]]
     - [[#parens][Parens]]
+    - [[#helper-bindings][Helper bindings]]
 - [[#org][Org]]
   - [[#org-load-path][Org Load Path]]
     - [[#fix-org-git-version][Fix Org-Git-Version]]
@@ -120,10 +124,10 @@
   - [[#text-scaling][Text Scaling]]
     - [[#default-text-scale][Default Text Scale]]
     - [[#change-text-scale][Change Text Scale]]
-- [[#pdf-1][PDF]]
-  - [[#pdf-tools][PDF Tools]]
 - [[#applications][Applications]]
   - [[#calendar][Calendar]]
+  - [[#pdf-1][PDF]]
+    - [[#pdf-tools][PDF Tools]]
 - [[#start-server][Start Server]]
 - [[#end][End]]
   - [[#message-startup-time][Message Startup Time]]
@@ -212,25 +216,7 @@
 (setq default-directory "~/" )
 #+end_src
 
-** Restart Emacs with Debug
-#+begin_src emacs-lisp
-  (defun cpkx/restart-emacs-debug-init (&optional args)
-    (interactive)
-    (restart-emacs (cons "--debug-init" args)))
-#+end_src
 * Package Management
-** Configure Package Manager
-#+begin_src emacs-lisp
- ; (unless (bound-and-true-p package--initialized)
- ;   (setq package-enable-at-startup nil)          ; To prevent initializing twice
- ;   (package-initialize))
-
-;  ;; set use-package-verbose to t for interpreted .emacs,
-;  ;; and to nil for byte-compiled .emacs.elc.
-;  (eval-and-compile
-;    (setq use-package-verbose (not (bound-and-true-p byte-compile-current-file))))
-#+end_src
-
 ** Bootstrap =Straight.el=
 #+begin_src emacs-lisp
   (defvar bootstrap-version)
@@ -434,7 +420,7 @@
 Make some word or string show as pretty Unicode symbols.
 #+begin_src emacs-lisp
   (global-prettify-symbols-mode 1)
-  (defun cpkx/add-pretty-lambda ()
+  (defun cpkx/add-pretty-symb ()
     (setq prettify-symbols-alist
           '(
             ("lambda" . 955)
@@ -444,8 +430,8 @@ Make some word or string show as pretty Unicode symbols.
             ("<=" . 8804)
             (">=" . 8805)
             )))
-  (add-hook 'prog-mode-hook 'cpkx/add-pretty-lambda)
-  (add-hook 'org-mode-hook  'cpkx/add-pretty-lambda)
+  (add-hook 'prog-mode-hook 'cpkx/add-pretty-symb)
+  (add-hook 'org-mode-hook  'cpkx/add-pretty-symb)
 #+end_src
 
 ** Dashboard
@@ -510,13 +496,6 @@ Make some word or string show as pretty Unicode symbols.
   (setq display-time-default-load-average nil)
   (setq display-time-day-and-date t)
   (setq display-time-mode t)
-#+end_src
-
-**** Show Current Time function
-#+begin_src emacs-lisp
-  (defun cpkx/show-current-time ()
-    (interactive)
-    (message (current-time-string)))
 #+end_src
 *** Yes/No -> y/n
 #+begin_src emacs-lisp
@@ -842,6 +821,28 @@ Temporary solution to remove buffer face mode from modeline
     (with-eval-after-load 'reftex (evil-collection-reftex-setup))
     (with-eval-after-load 'magit  (evil-collection-magit-todos-setup)))
 #+end_src
+** Shell Command
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "!" 'shell-command)
+#+end_src
+** Universal Argument
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "u" 'universal-argument)
+#+end_src
+** Exit Emacs
+#+begin_src emacs-lisp
+  (defun cpkx/restart-emacs-debug-init (&optional args)
+    (interactive)
+    (restart-emacs (cons "--debug-init" args)))
+
+  (cpkx/leader-keys
+    "qs" 'save-buffers-kill-emacs
+    "qr" 'restart-emacs
+    "qd" 'cpkx/restart-emacs-debug-init)
+#+end_src
+
 * Buffer and Window Management
 ** Window Management
 *** Window History
@@ -905,14 +906,58 @@ Temporary solution to remove buffer face mode from modeline
         (window-configuration-to-register ?_)
         (delete-other-windows))))
 #+end_src
+*** Buffer Bindings
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "bd"  'cpkx/kill-this-buffer
+    "bn"  'next-buffer
+    "bp"  'previous-buffer
+    "br"  'revert-buffer
+    "TAB" 'cpkx/alternate-buffer
+    "bx"  'kill-buffer-and-window
+    "fs"  'save-buffer)
+#+end_src
+
 * Navigation
-** IMenu
+** Emacs Defaults
+*** Find-File
+#+begin_src emacs-lisp
+  (use-package find-file
+    :ensure nil
+    :init
+    (cpkx/leader-keys
+      "fO" 'ff-find-other-file)
+    (defvar org-other-file-alist
+      '(("\\.org\\'" (".el" ".pdf"))))
+    (defvar el-other-file-alist
+      '(("\\.el\\'" (".org"))))
+    (defvar pdf-other-file-alist
+      '(("\\.pdf\\'" (".tex" ".org"))))
+    (defvar latex-other-file-alist
+      '(("\\.tex\\'" (".pdf"))))
+    (add-hook 'org-mode-hook
+              (lambda () (setq ff-other-file-alist 'org-other-file-alist)))
+    (add-hook 'emacs-lisp-mode-hook
+              (lambda () (setq ff-other-file-alist 'el-other-file-alist)))
+    (add-hook 'LaTeX-mode-hook
+              (lambda () (setq ff-other-file-alist 'latex-other-file-alist)))
+    (add-hook 'pdf-view-mode-hook
+              (lambda () (setq ff-other-file-alist 'pdf-other-file-alist))))
+#+end_src
+*** IMenu
 #+begin_src emacs-lisp
   (use-package imenu
     :ensure nil
     :general
     (cpkx/leader-keys
       "ji" 'imenu))
+#+end_src
+*** Saveplace
+#+begin_src emacs-lisp
+  (use-package saveplace
+   :ensure nil
+    :config
+    (save-place-mode))
 #+end_src
 ** Helm
 #+begin_src emacs-lisp :tangle no
@@ -1064,14 +1109,6 @@ Temporary solution to remove buffer face mode from modeline
     (setq ivy-flx-limit 10000))
 #+end_src
 
-** Misc.
-*** Saveplace
-#+begin_src emacs-lisp
-  (use-package saveplace
-    :ensure nil
-    :config
-    (save-place-mode))
-#+end_src
 * Development
 ** Company
 #+begin_src emacs-lisp
@@ -1277,6 +1314,19 @@ Temporary solution to remove buffer face mode from modeline
     :hook (prog-mode . rainbow-delimiters-mode))
 #+end_src
 
+*** Helper bindings
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "hdb" 'describe-bindings
+    "hdc" 'describe-char
+    "hdf" 'describe-function
+    "hdk" 'describe-key
+    "hdm" 'describe-mode
+    "hdp" 'describe-package
+    "hdt" 'describe-theme
+    "hdv" 'describe-variable
+    )
+#+end_src
 * Org
 ** Org Load Path
 *** Fix Org-Git-Version
@@ -1535,21 +1585,6 @@ Saves
   (cpkx/leader-keys
     "wz" 'hydra-window-scale/body)
 #+end_src
-* PDF
-** PDF Tools
-#+begin_src emacs-lisp
-  (use-package pdf-tools
-    :diminish pdf-view-midnight-minor-mode
-    :mode (("\\.pdf\\'" . pdf-view-mode))
-    :config
-    (progn
-      (require 'pdf-occur)
-      (require 'pdf-sync)
-      (pdf-tools-install :no-query)
-      (add-hook 'pdf-view-mode-hook (lambda() (pdf-view-midnight-minor-mode 1)))
-      (add-hook 'pdf-view-mode-hook (lambda () (cua-mode 0)))
-      (add-hook 'pdf-view-mode-hook #'pdf-tools-enable-minor-modes)))
-#+end_src
 * Applications
 ** Calendar
 #+begin_src emacs-lisp
@@ -1591,7 +1626,6 @@ Saves
       ;; goto
       "." 'calendar-goto-today
       "gd" 'calendar-goto-date ; "gd" in evil-org-agenda, "gd" in Emacs.
-      ;; "gD" 'calendar-other-month ; Not very useful if we have `calendar-goto-date'.
 
       ;; diary
       "D" 'diary-view-other-diary-entries
@@ -1617,13 +1651,31 @@ Saves
       "M-=" 'calendar-count-days-region
 
       ;; quit
-      "q" 'calendar-exit))
+      "q" 'calendar-exit)
+    (cpkx/leader-keys
+      "ac" 'calendar))
+#+end_src 
+
+** PDF
+*** PDF Tools
+#+begin_src emacs-lisp
+  (use-package pdf-tools
+    :diminish pdf-view-midnight-minor-mode
+    :mode (("\\.pdf\\'" . pdf-view-mode))
+    :config
+    (progn
+      (require 'pdf-occur)
+      (require 'pdf-sync)
+      (pdf-tools-install :no-query)
+      (add-hook 'pdf-view-mode-hook (lambda() (pdf-view-midnight-minor-mode 1)))
+      (add-hook 'pdf-view-mode-hook (lambda () (cua-mode 0)))
+      (add-hook 'pdf-view-mode-hook #'pdf-tools-enable-minor-modes)))
 #+end_src
 * Start Server
 #+begin_src emacs-lisp
-  (use-package server
-    :ensure nil
-    :ghook ('after-init-hook #'server-start))
+  ;(use-package server
+  ;  :ensure nil
+  ;  :ghook ('after-init-hook #'server-start))
 #+end_src
 * End
 ** Message Startup Time
