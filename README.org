@@ -39,15 +39,24 @@
   - [[#shell-command][Shell Command]]
   - [[#universal-argument][Universal Argument]]
   - [[#exit-emacs][Exit Emacs]]
-- [[#buffer-and-window-management][Buffer and Window Management]]
-  - [[#window-management][Window Management]]
+- [[#bufferframewindow-management][Buffer/Frame/Window Management]]
   - [[#buffer-management][Buffer Management]]
+  - [[#frame-management][Frame Management]]
+  - [[#window-management][Window Management]]
+- [[#directory-management][Directory Management]]
+  - [[#ranger][Ranger]]
+  - [[#frequent-files][Frequent Files]]
 - [[#navigation][Navigation]]
   - [[#emacs-defaults][Emacs Defaults]]
+  - [[#ace-link][Ace link]]
+  - [[#avy][Avy]]
+  - [[#dumb-jump][Dumb Jump]]
   - [[#helm][Helm]]
   - [[#ivy][Ivy]]
+  - [[#undo][Undo]]
 - [[#development][Development]]
   - [[#company][Company]]
+  - [[#source-control][Source Control]]
   - [[#languages][Languages]]
   - [[#productivity][Productivity]]
 - [[#org][Org]]
@@ -58,13 +67,17 @@
   - [[#pdf][PDF]]
   - [[#toc][TOC]]
 - [[#writing][Writing]]
-  - [[#dictionary][Dictionary]]
+  - [[#word-check][Word Check]]
   - [[#olivetti][Olivetti]]
+  - [[#visual-fill-column][Visual Fill Column]]
+  - [[#fix-word][Fix Word]]
   - [[#line-spacing][Line Spacing]]
-  - [[#export][Export]]
   - [[#text-scaling][Text Scaling]]
+  - [[#clipboard][Clipboard]]
+  - [[#export][Export]]
 - [[#applications][Applications]]
   - [[#calendar][Calendar]]
+  - [[#projectile][Projectile]]
   - [[#pdf-1][PDF]]
 - [[#start-server][Start Server]]
 - [[#end][End]]
@@ -264,6 +277,7 @@
   (setq initial-major-mode 'emacs-lisp-mode)
   ;; save system clipboard contents to emacs kill ring
   (setq save-interprogram-paste-before-kill t)
+  (setq-default indicate-empty-lines t)
 
   (setq column-number-mode t)
   (setq size-indication-mode t)
@@ -348,10 +362,45 @@
 
 *** All the icons
 #+begin_src emacs-lisp
-  (use-package all-the-icons)
+  (use-package all-the-icons
+    :init
+    (add-hook 'after-init-hook (lambda () (require 'all-the-icons)))
+    :config
+    (setq all-the-icons-scale-factor 1.0))
+  (use-package all-the-icons-ivy
+    :after (ivy all-the-icons)
+    :init
+    (add-hook 'counsel-projectile-mode-hook 'all-the-icons-ivy-setup)
+    (add-hook 'ivy-mode-hook 'all-the-icons-ivy-setup)
+    :config
+    (progn
+      (defun all-the-icons-ivy-file-transformer (s)
+        "Return a candidate string for filename S preceded by an icon."
+        (format "%s %s"
+                (propertize "\t" 'display (all-the-icons-ivy-icon-for-file s))
+                s))
+      (defun all-the-icons-ivy--buffer-transformer (b s)
+        "Return a candidate string for buffer B named S preceded by an icon.
+   Try to find the icon for the buffer's B `major-mode'.
+   If that fails look for an icon for the mode that the `major-mode' is derived from."
+        (let ((mode (buffer-local-value 'major-mode b)))
+          (format "%s %s"
+                  (propertize "\t" 'display (or
+                                             (all-the-icons-ivy--icon-for-mode mode)
+                                             (all-the-icons-ivy--icon-for-mode (get mode 'derived-mode-parent))))
+                  (all-the-icons-ivy--buffer-propertize b s))))
+      (all-the-icons-ivy-setup)))
+
+
   (use-package all-the-icons-ivy-rich
     :ensure t
     :init (all-the-icons-ivy-rich-mode 1))
+
+  (use-package all-the-icons-dired
+    :after ranger
+    :init
+    (add-hook 'ranger-mode-hook 'all-the-icons-dired-mode)
+    (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
 #+end_src
 
 ** Prettify Symbols
@@ -448,15 +497,46 @@ Temporary solution to remove buffer face mode from modeline
 
 * Bindings
 ** Which Key
+*** Which Key Mode
 #+begin_src emacs-lisp
   (use-package which-key
-    :init (which-key-mode)
-    :diminish
-    :custom
-    (which-key-separator " ")
-    (which-key-prefix-prefix "+")
+    :diminish which-key-mode
     :config
-    (setq which-key-idle-delay 0))
+    (setq which-key-idle-delay 0
+          which-key-idle-secondary-delay 0
+          which-key-sort-order 'which-key-key-order-alpha)
+    (cpkx/leader-keys
+      "a"   '(:ignore t :which-key "applications")
+      "ao"  '(:ignore t :which-key "org")
+      "aof" '(:ignore t :which-key "feed")
+      "aok" '(:ignore t :which-key "clock")
+      "b"   '(:ignore t :which-key "buffers")
+      "c"   '(:ignore t :which-key "comments")
+      "C"   '(:ignore t :which-key "Capture")
+      "e"   '(:ignore t :which-key "errors")
+      "f"   '(:ignore t :which-key "files")
+      "F"   '(:ignore t :which-key "Frames")
+      "g"   '(:ignore t :which-key "git/vc")
+      "gf"  '(:ignore t :which-key "files")
+      "h"   '(:ignore t :which-key "help")
+      "i"   '(:ignore t :which-key "insert")
+      "iS"  '(:ignore t :which-key "auto-yas")
+      "j"   '(:ignore t :which-key "jump")
+      "p"   '(:ignore t :which-key "projects")
+      "ps"  '(:ignore t :which-key "search")
+      "q"   '(:ignore t :which-key "quit")
+      "r"   '(:ignore t :which-key "regs/rings/replace")
+      "s"   '(:ignore t :which-key "search")
+      "M-s" '(:ignore t :which-key "Spell/Grammar")
+      "t"   '(:ignore t :which-key "toggles")
+      "th"  '(:ignore t :which-key "highlight")
+      "T"   '(:ignore t :which-key "Themes")
+      "w"   '(:ignore t :which-key "windows")
+      "wp"  '(:ignore t :which-key "popwin")
+      "x"   '(:ignore t :which-key "text")
+      "xS"  '(:ignore t :which-key "Synosaurus")
+      "z"   '(:ignore t :which-key "zoom"))
+    (which-key-mode 1))
 #+end_src
 
 ** ESC Cancel
@@ -464,6 +544,7 @@ Temporary solution to remove buffer face mode from modeline
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+end_src
 ** Hydra
+*** Initial Setup
 #+begin_src emacs-lisp
   (use-package hydra
     :config
@@ -483,6 +564,35 @@ Temporary solution to remove buffer face mode from modeline
           (list (list 'cpkx/posframe #'cpkx/hydra-posframe-show #'cpkx/hydra-posframe-hide))
           hydra--work-around-dedicated nil))
 #+end_src
+*** TODO Pretty Hydra
+#+begin_src emacs-lisp
+  (use-package pretty-hydra
+    :init
+    (cpkx/leader-keys
+      "t." 'hydra-toggles/body)
+    :config
+    (pretty-hydra-define hydra-toggles
+                         (:hint nil :color amaranth :quit-key "q")
+                         ("Basic"
+                          (("n" display-line-numbers-mode "line number" :toggle t)
+                           ("N" cpkx/toggle-line-numbers-type "line number type")
+                           ("L" linum-mode "Exact line number" :toggle t)
+                           ("w" whitespace-mode "whitespace" :toggle t)
+                           ("r" rainbow-mode "rainbow" :toggle t))
+                          "Highlight"
+                          (("S" highlight-symbol-mode "symbol" :toggle t)
+                           ("l" hl-line-mode "line" :toggle t)
+                           ("t" hl-todo-mode "todo" :toggle t)
+                           ("i" color-identifiers-mode "identifiers" :toggle t))
+                          "UI"
+                          (("m" hide-mode-line-mode "mode line" :toggle t))
+                          "Coding"
+                          (("p" smartparens-global-mode "smartparens" :toggle t)
+                           ("P" smartparens-global-strict-mode "smartparens strict" :toggle t)
+                           ("c" flycheck-mode "flycheck" :toggle t)
+                           ("s" flyspell-mode "flyspell" :toggle t)))))
+#+end_src
+
 ** General
 #+begin_src emacs-lisp
   (use-package general
@@ -771,6 +881,10 @@ Temporary solution to remove buffer face mode from modeline
 #+end_src
 ** Exit Emacs
 #+begin_src emacs-lisp
+  (use-package restart-emacs
+    :config
+    (setq restart-emacs-restore-frame t))
+
   (defun cpkx/restart-emacs-debug-init (&optional args)
     (interactive)
     (restart-emacs (cons "--debug-init" args)))
@@ -781,35 +895,7 @@ Temporary solution to remove buffer face mode from modeline
     "qd" 'cpkx/restart-emacs-debug-init)
 #+end_src
 
-* Buffer and Window Management
-** Window Management
-*** Window History
-#+begin_src emacs-lisp
-  (use-package winner
-    :ensure nil
-    :init
-    (cpkx/leader-keys
-     "wu" 'winner-undo
-     "wU" 'winner-redo)
-    :config
-    (setq winner-boring-buffers
-          '("*Completions*"
-            "*Compile-Log*"
-            "*inferior-lisp*"
-            "*Fuzzy Completions*"
-            "*Apropos*"
-            "*Help*"
-            "*cvs*"
-            "*Buffer List*"
-            "*Ibuffer*"
-            "*esh command on file*"
-            "*Youdao Dictionary*"
-            "*PDF-Occur*"
-            "*Google Translate*"
-            "*magit.*"
-            ))
-    (winner-mode))
-#+end_src
+* Buffer/Frame/Window Management
 ** Buffer Management
 *** Buffer Functions
 **** Switch Alternate Buffer
@@ -853,7 +939,205 @@ Temporary solution to remove buffer face mode from modeline
     "br"  'revert-buffer
     "TAB" 'cpkx/alternate-buffer
     "bx"  'kill-buffer-and-window
-    "fs"  'save-buffer)
+    "fs"  'save-buffer
+    "bm"  'cpkx/toggle-maximize-buffer)
+#+end_src
+** Frame Management
+*** Frame Bindings
+#+begin_src emacs-lisp
+ (cpkx/leader-keys
+   "Fd" 'delete-frame
+   "Fn" 'make-frame
+   "Fo" 'other-frame)
+#+end_src
+*** zoom-frm
+#+begin_src emacs-lisp
+  (use-package zoom-frm
+    :commands (zoom-frm-unzoom
+               zoom-frm-out
+               zoom-frm-in)
+    :init
+    (progn
+      (defhydra hydra-zoom-frm ()
+        "zoom-frm"
+        ("i" zoom-frm-in "in")
+        ("o" zoom-frm-out "out")
+        ("0" zoom-frm-unzoom "reset")
+        ("q" nil "quit")
+        )
+      (cpkx/leader-keys
+        "Fz" 'hydra-zoom-frm/body)))
+#+end_src
+** Window Management
+*** Ace Window
+#+begin_src emacs-lisp
+  (use-package ace-window
+    :general
+    (cpkx/leader-keys
+      "wM" 'ace-swap-window
+      "wW" 'ace-window))
+#+end_src
+*** Eyebrowse
+#+begin_src emacs-lisp
+  (use-package eyebrowse
+    :init
+    (add-hook 'after-init-hook 'eyebrowse-mode)
+    (add-to-list 'window-persistent-parameters '(quit-restore . writable))
+    :general
+    (:keymaps 'override
+     :states '(normal visual motion)
+     "gc" 'eyebrowse-close-window-config
+     "gl" 'eyebrowse-last-window-config
+     "g0" 'eyebrowse-switch-to-window-config-0
+     "g1" 'eyebrowse-switch-to-window-config-1
+     "g2" 'eyebrowse-switch-to-window-config-2
+     "g3" 'eyebrowse-switch-to-window-config-3
+     "g4" 'eyebrowse-switch-to-window-config-4
+     "g5" 'eyebrowse-switch-to-window-config-5
+     "g6" 'eyebrowse-switch-to-window-config-6
+     "g7" 'eyebrowse-switch-to-window-config-7
+     "g8" 'eyebrowse-switch-to-window-config-8
+     "g9" 'eyebrowse-switch-to-window-config-9)
+    (cpkx/leader-keys
+      "w." 'hydra-eyebrowse/body
+      "ww" 'eyebrowse-switch-to-window-config
+      "wr" 'eyebrowse-rename-window-config)
+    :config
+    (setq eyebrowse-mode-line-style 'current
+          eyebrowse-new-workspace t)
+    (custom-set-faces '(eyebrowse-mode-line-active ((nil))))
+    (eyebrowse-mode))
+
+  (defhydra hydra-eyebrowse (:hint nil)
+    ("0" eyebrowse-switch-to-window-config-0 :exit t)
+    ("1" eyebrowse-switch-to-window-config-1 :exit t)
+    ("2" eyebrowse-switch-to-window-config-2 :exit t)
+    ("3" eyebrowse-switch-to-window-config-3 :exit t)
+    ("4" eyebrowse-switch-to-window-config-4 :exit t)
+    ("5" eyebrowse-switch-to-window-config-5 :exit t)
+    ("6" eyebrowse-switch-to-window-config-6 :exit t)
+    ("7" eyebrowse-switch-to-window-config-7 :exit t)
+    ("8" eyebrowse-switch-to-window-config-8 :exit t)
+    ("9" eyebrowse-switch-to-window-config-9 :exit t)
+    ("C-0" eyebrowse-switch-to-window-config-0)
+    ("C-1" eyebrowse-switch-to-window-config-1)
+    ("C-2" eyebrowse-switch-to-window-config-2)
+    ("C-3" eyebrowse-switch-to-window-config-3)
+    ("C-4" eyebrowse-switch-to-window-config-4)
+    ("C-5" eyebrowse-switch-to-window-config-5)
+    ("C-6" eyebrowse-switch-to-window-config-6)
+    ("C-7" eyebrowse-switch-to-window-config-7)
+    ("C-8" eyebrowse-switch-to-window-config-8)
+    ("C-9" eyebrowse-switch-to-window-config-9)
+    ("<tab>" eyebrowse-last-window-config)
+    ("<return>" nil :exit t)
+    ("TAB" eyebrowse-last-window-config)
+    ("RET" nil :exit t)
+    ("c" eyebrowse-create-window-config :exit t)
+    ("C" eyebrowse-create-window-config)
+    ("C-h" eyebrowse-prev-window-config)
+    ("C-l" eyebrowse-next-window-config)
+    ("d" eyebrowse-close-window-config)
+    ("l" hydra-persp/body :exit t)
+    ("n" eyebrowse-next-window-config)
+    ("N" eyebrowse-prev-window-config)
+    ("p" eyebrowse-prev-window-config)
+    ("R" spacemacs/workspaces-ts-rename :exit t)
+    ("w" eyebrowse-switch-to-window-config :exit t)
+    ("q" nil))
+#+end_src
+*** Window History
+#+begin_src emacs-lisp
+  (use-package winner
+    :ensure nil
+    :init
+    (cpkx/leader-keys
+     "wu" 'winner-undo
+     "wU" 'winner-redo)
+    :config
+    (setq winner-boring-buffers
+          '("*Completions*"
+            "*Compile-Log*"
+            "*inferior-lisp*"
+            "*Fuzzy Completions*"
+            "*Apropos*"
+            "*Help*"
+            "*cvs*"
+            "*Buffer List*"
+            "*Ibuffer*"
+            "*esh command on file*"
+            "*Youdao Dictionary*"
+            "*PDF-Occur*"
+            "*Google Translate*"
+            "*magit.*"
+            ))
+    (winner-mode))
+#+end_src
+*** Window Bindings
+**** Basic Window Bindings
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "wv" 'split-window-right
+    "ws" 'split-window-below
+    "w=" 'balance-windows-area
+    "wb" 'balance-windows
+    "wd" 'delete-window)
+#+end_src
+
+**** Window Focus
+#+begin_src emacs-lisp
+  (defun cpkx/split-window-right-and-focus ()
+    "Split the window horizontally and focus the new window."
+    (interactive)
+    (split-window-right)
+    (windmove-right)
+    (when (and (boundp 'golden-ratio-mode)
+               (symbol-value golden-ratio-mode))
+      (golden-ratio)))
+
+  (defun cpkx/split-window-below-and-focus ()
+    "Split the window vertically and focus the new window."
+    (interactive)
+    (split-window-below)
+    (windmove-down)
+    (when (and (boundp 'golden-ratio-mode)
+               (symbol-value golden-ratio-mode))
+      (golden-ratio)))
+
+  (cpkx/leader-keys
+    "wV" 'cpkx/split-window-right-and-focus
+    "wS" 'cpkx/split-window-below-and-focus)
+#+end_src
+
+* Directory Management
+** Ranger
+#+begin_src emacs-lisp
+  (use-package ranger
+    :general
+    (cpkx/leader-keys
+      "ar" 'ranger
+      "ad" 'deer)
+    :config
+    (cpkx/motion-keys
+      :keymaps 'ranger-mode-map
+      "M-g"    'ranger-go
+      "gg"     'ranger-goto-top))
+#+end_src
+
+#+RESULTS:
+
+** TODO Frequent Files
+#+begin_src emacs-lisp
+  (defhydra hydra-frequently-accessed-files (:exit t)
+    "files"
+    ("i" (lambda () (interactive)   (find-file "~/.emacs.d/init.el"))    "init.el")
+    ("o" (lambda () (interactive)   (find-file "~/.emacs.d/README.org")) "literate config")
+    ("M-d" (lambda () (interactive) (deer "~/Dropbox/"))                 "Dropbox")
+    ("M-n" (lambda () (interactive) (deer "~/git/phd/notes"))            "Notes")
+
+    ("q" nil "quit"))
+  (cpkx/leader-keys
+    "fo" 'hydra-frequently-accessed-files/body)
 #+end_src
 
 * Navigation
@@ -883,6 +1167,7 @@ Temporary solution to remove buffer face mode from modeline
               (lambda () (setq ff-other-file-alist 'pdf-other-file-alist))))
 #+end_src
 *** IMenu
+**** Initial Setup
 #+begin_src emacs-lisp
   (use-package imenu
     :ensure nil
@@ -890,12 +1175,120 @@ Temporary solution to remove buffer face mode from modeline
     (cpkx/leader-keys
       "ji" 'imenu))
 #+end_src
+**** IMenu List
+#+begin_src emacs-lisp
+  (defun cpkx/imenu-list ()
+    (interactive)
+    (if (bound-and-true-p lsp-mode)
+        (lsp-ui-imenu)
+      (imenu-list-smart-toggle)))
+
+  (use-package imenu-list
+    :commands imenu-list-smart-toggle
+    :init
+    (progn
+      (setq imenu-list-focus-after-activation t
+            imenu-list-auto-resize t)
+      (cpkx/leader-keys
+        "bi" 'cpkx/imenu-list))
+    :config
+    (cpkx/normal-keys
+      :keymaps 'imenu-list-major-mode-map
+      "d"   'imenu-list-display-entry
+      "r"   'imenu-list-refresh
+      "q"   'imenu-list-quit-window
+      "RET" 'imenu-list-goto-entry))
+#+end_src
 *** Saveplace
 #+begin_src emacs-lisp
   (use-package saveplace
    :ensure nil
     :config
     (save-place-mode))
+#+end_src
+** Ace link
+#+begin_src emacs-lisp
+  (use-package ace-link
+    :commands (ace-link-info
+               ace-link-help
+               ace-link-eww)
+    :init
+    (progn
+      (with-eval-after-load 'info
+        (define-key Info-mode-map "o" 'ace-link-info))
+      (with-eval-after-load 'help-mode
+        (define-key help-mode-map "o" 'ace-link-help))
+      (with-eval-after-load 'eww
+        (define-key eww-link-keymap "o" 'ace-link-eww)
+        (define-key eww-mode-map "o" 'ace-link-eww))))
+#+end_src
+** Avy
+#+begin_src emacs-lisp
+  (use-package avy
+    :config
+    (setq avy-all-windows nil
+          avy-background t
+          avy-flyspell-correct-function #'flyspell-correct-at-point)
+    :general
+    (:keymaps 'override
+     [remap evil-find-char] 'cpkx/avy-goto-char-in-line-without-background)
+    (cpkx/leader-keys
+      "jj" 'avy-goto-char-timer
+      "j M-j" 'cpkx/avy-goto-char-timer-all-windows
+      "jl" 'avy-goto-line
+      "j M-l" 'cpkx/avy-goto-line-all-windows
+      "jw" 'avy-goto-word-or-subword-1
+      "j M-w" 'cpkx/avy-goto-word-or-subword-1-all-windows
+      "jc" 'avy-goto-char
+      "j M-c" 'cpkx/avy-goto-char-all-windows)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      "jj" 'avy-org-goto-heading-timer)
+    (cpkx/all-states-keys
+      "M-e" 'avy-goto-word-1
+      "M-r" 'avy-goto-char
+      "C-'" 'avy-goto-line))
+
+  (defun cpkx/avy-goto-char-timer-all-windows ()
+    (interactive)
+    (let ((avy-all-windows t))
+      (avy-goto-char-autoload)))
+
+     ;;;###timer
+  (defun cpkx/avy-goto-line-all-windows ()
+    (interactive)
+    (let ((avy-all-windows t))
+      (avy-goto-line)))
+
+  (defun cpkx/avy-goto-word-or-subword-1-all-windows ()
+    (interactive)
+    (let ((avy-all-windows t))
+      (avy-goto-word-or-subword-1)))
+
+  (defun cpkx/avy-goto-char-all-windows ()
+    (interactive)
+    (let ((avy-all-windows t))
+      (call-interactively 'avy-goto-char)))
+
+  (defun cpkx/avy-goto-char-in-line-without-background ()
+    (interactive)
+    (let ((avy-background nil))
+      (call-interactively 'avy-goto-char-in-line)))
+#+end_src
+** Dumb Jump
+#+begin_src emacs-lisp
+  (use-package dumb-jump
+    :general
+    (cpkx/all-states-keys
+      :states '(insert emacs normal)
+      "M-g o" 'dumb-jump-go-other-window
+      "M-g g" 'dumb-jump-go
+      "M-g l" 'dumb-jump-quick-look
+      "M-g x" 'dumb-jump-go-prefer-external
+      "M-g z" 'dumb-jump-go-prefer-external-other-window)
+    :config
+    (progn
+      (setq dumb-jump-selector 'ivy)))
 #+end_src
 ** Helm
 #+begin_src emacs-lisp :tangle no
@@ -924,35 +1317,45 @@ Temporary solution to remove buffer face mode from modeline
 *** Basic Setup
 #+begin_src emacs-lisp
   (use-package ivy
-    :diminish
-    :init
-    (use-package counsel)
-    (use-package swiper)
-    (ivy-mode 1)
-    :bind (("C-s" . swiper)
-           :map ivy-minibuffer-map
-           ("TAB" . ivy-alt-done)
-           :map ivy-switch-buffer-map
-           ("TAB" . ivy-done)
-           ("C-d" . ivy-switch-buffer-kill)
-           :map ivy-reverse-i-search-map
-           ("C-d" . ivy-reverse-i-search-kill))
+    :diminish ivy-mode
+    :general
+    (cpkx/leader-keys
+      "bb" 'ivy-switch-buffer)
+    (cpkx/non-insert-keys
+      "M-b" 'ivy-switch-buffer)
+    (:keymaps 'ivy-minibuffer-map
+     "C-j" 'ivy-next-line
+     "C-k" 'ivy-previous-line
+     "C-h" (kbd "DEL")
+     "C-l" 'ivy-alt-done)
+    (:keymaps 'ivy-switch-buffer-map
+     "C-k" 'ivy-previous-line
+     "M-k" 'ivy-switch-buffer-kill)
+
     :config
     (setq ivy-use-virtual-buffers t)
     (setq ivy-wrap t)
+    (setq ivy-re-builders-alist '((t . ivy--regex-ignore-order)))
     (setq ivy-count-format "(%d/%d) ")
+    (setq ivy-initial-inputs-alist nil)
     (setq enable-recursive-minibuffers t)
-
-    ;; Use different regex strategies per completion command
-    (push '(swiper . ivy--regex-ignore-order) ivy-re-builders-alist)
-
-    ;; Set minibuffer height for different commands
-    (setf (alist-get 'swiper ivy-height-alist) 15))
+    (ivy-mode 1))
 #+end_src
 
+*** Ivy Avy
+#+begin_src emacs-lisp
+  (use-package ivy-avy
+    :init
+    (setq ivy-avy-style 'at-full))
+#+end_src
 *** Ivy-Bibtex
 #+begin_src emacs-lisp
   (use-package ivy-bibtex
+    :commands ivy-bibtex
+    :init
+    (progn
+      (cpkx/leader-keys
+       "ib" 'ivy-bibtex))
     :config
     (setq bibtex-completion-bibliography        "~/Dropbox/org/Research/zotLib.bib")
     (setq bibtex-completion-library-path        "~/Dropbox/org/Research/zotero-library/")
@@ -975,6 +1378,19 @@ Temporary solution to remove buffer face mode from modeline
            ":YEAR: ${year}\n"
            ":DOI: ${doi}\n"
            ":URL: ${url}\n"
+           ":END:\n\n"))
+    (setq bibtex-completion-notes-template-one-file
+          (concat
+           "#+TITLE: ${title}\n"
+           "#+CITE_KEY: ${=key=}\n"
+           ":PROPERTIES:\n"
+           ":Custom_ID: ${=key=}\n"
+           ":AUTHOR: ${author-abbrev}\n"
+           ":JOURNAL: ${journaltitle}\n"
+           ":DATE: ${date}\n"
+           ":YEAR: ${year}\n"
+           ":DOI: ${doi}\n"
+           ":URL: ${url}\n"
            ":END:\n\n")))
 #+end_src
 
@@ -984,31 +1400,27 @@ Temporary solution to remove buffer face mode from modeline
 *** Ivy-Prescient
 #+begin_src emacs-lisp
   (use-package ivy-prescient
-    :after counsel
-    :custom
-    (ivy-prescient-enable-filtering nil)
+    :after (ivy counsel)
     :config
-    (prescient-persist-mode 1)
-    (ivy-prescient-mode 1))
+    (ivy-prescient-mode)
+    (prescient-persist-mode))
 #+end_src
 *** Ivy-Hydra
 #+begin_src emacs-lisp
-  (use-package ivy-hydra
-    :after hydra)
+  (use-package ivy-hydra)
 #+end_src
 *** Ivy-Rich
 #+begin_src emacs-lisp
-    (use-package ivy-rich
-      :init
-      (ivy-rich-mode 1)
-      :config
-      (setq ivy-format-function #'ivy-format-function-line)
-      )
+  (use-package ivy-rich
+    :after (ivy counsel)
+    :config
+    (ivy-rich-mode 1))
 #+end_src
 *** Ivy-Posframe
 #+begin_src emacs-lisp
   (use-package ivy-posframe
     :after ivy
+    :diminish ivy-posframe-mode
     :config
     (setq ivy-posframe-hide-minibuffer t
           ivy-posframe-border-width 2
@@ -1022,51 +1434,301 @@ Temporary solution to remove buffer face mode from modeline
             ))
     (ivy-posframe-mode 1))
 #+end_src
+
+*** Ivy-XRef
+#+begin_src emacs-lisp
+  (use-package ivy-xref
+    :init
+    (when (>= emacs-major-version 27)
+      (setq xref-show-definitions-function #'ivy-xref-show-defs))
+    (setq xref-show-xrefs-function #'ivy-xref-show-xrefs
+          ivy-xref-remove-text-properties t))
+#+end_src
+*** Amx
+#+begin_src emacs-lisp
+  (use-package amx
+    :commands (counsel-M-X)
+    :config
+    (amx-mode))
+#+end_src
 *** Counsel
 #+begin_src emacs-lisp
   (use-package counsel
-    :diminish counsel-mode
-    :ensure t
-    :bind
-    (("M-x"     . counsel-M-x)
-     ("C-M-j"   . 'counsel-switch-buffer)
-     ("C-x C-f" . counsel-find-file)
-     ("C-M-l"   . counsel-imenu)
-     :map minibuffer-local-map
-     ("C-r"     . 'counsel-minibuffer-history))
+    :general
+    ("M-x" 'counsel-M-x)
+    (cpkx/non-insert-keys
+      "M-f" 'counsel-find-file)
+    (cpkx/leader-keys
+      ;; files
+      "fb" 'counsel-bookmark
+      "ff" 'counsel-find-file
+      "fl" 'counsel-locate
+      "fr" 'counsel-recoll
+      ;; help
+      "?"   'counsel-descbinds
+      "hda" 'counsel-apropos
+      "hdf" 'counsel-describe-function
+      "hdF" 'counsel-describe-face
+      "hdv" 'counsel-describe-variable
+      "hi"  'counsel-info-lookup-symbol
+      "ji" 'counsel-imenu
+      ;; register/ring
+      "ry"  'counsel-yank-pop
+      "rm"  'counsel-mark-ring
+      ;; search
+      "sa" 'counsel-ag
+      "sp" 'counsel-projectile-ag
+      ;; themes
+      "Ts"  'counsel-load-theme
+      ;; insert color
+      "ic" 'counsel-colors-emacs
+      "iu" 'counsel-unicode-char)
+    (cpkx/all-states-keys
+      "M-y" 'counsel-yank-pop)
+    (cpkx/all-states-keys
+      :keymaps 'inferior-python-mode-map
+      "M-h" 'counsel-shell-history)
     :config
-    (setq ivy-initial-inputs-alist nil) ;; Don't start searches with ^
-    (setf (alist-get 'counsel-switch-buffer ivy-height-alist) 7)
-    (push '(counsel-M-x . ivy--regex-ignore-order) ivy-re-builders-alist)
+    (setq counsel-yank-pop-preselect-last t
+          counsel-ag-base-command "ag --vimgrep --skip-vcs-ignores %s")
+    (add-to-list 'ivy-height-alist `(counsel-yank-pop . ,ivy-height))
     (counsel-mode 1))
 #+end_src
-*** Flx
+*** Counsel Projectile
 #+begin_src emacs-lisp
-  (use-package flx  ;; Improves sorting for fuzzy-matched results
-    :init
-    (setq ivy-flx-limit 10000))
+  (use-package counsel-projectile
+    :general
+    (cpkx/leader-keys
+      "p SPC" 'counsel-projectile
+      "pf"    'counsel-projectile-find-file
+      "pb"    'counsel-projectile-switch-to-buffer
+      "pd"    'counsel-projectile-find-dir
+      "pp"    'counsel-projectile-switch-project
+      "psg"   'counsel-projectile-grep
+      "pss"   'counsel-projectile-ag
+      "psr"   'counsel-projectile-rg)
+    :config
+    (counsel-projectile-mode))
+#+end_src
+*** Counsel Dash
+#+begin_src emacs-lisp
+  (use-package counsel-dash
+    :general
+    (cpkx/leader-keys
+      "d" '(:ignore t :wk "documents")
+      "dh" 'counsel-dash)
+    :config
+    (setq counsel-dash-browser-func 'eww))
+#+end_src
+*** Swiper
+#+begin_src emacs-lisp
+  (use-package swiper
+    :general
+    ("C-s" 'swiper)
+    (cpkx/leader-keys
+      "ss" 'swiper))
+#+end_src
+** Undo
+*** Undo Fu
+#+begin_src emacs-lisp
+  (use-package undo-fu
+    :general
+    (cpkx/normal-keys
+      "U" 'undo-fu-only-redo)
+    :config
+    (global-undo-tree-mode -1))
+
+  (use-package undo-fu-session
+    :config
+    (setq undo-fu-session-incompatible-files '("/COMMIT_EDITMSG\\'" "/git-rebase-todo\\'"))
+    (global-undo-fu-session-mode))
 #+end_src
 
 * Development
 ** Company
+*** Company-Mode
 #+begin_src emacs-lisp
   (use-package company
     :diminish company-mode
-    :after lsp-mode
-    :hook (lsp-mode . company-mode)
-    :bind (:map company-active-map
-                ("<tab>" . company-complete-selection))
-    (:map lsp-mode-map
-          ("<tab>" . company-indent-or-complete-common))
-    :custom
-    (company-minimum-prefix-length 1)
-    (company-idle-delay 0.0))
+    :init
+    (progn
+      (add-hook 'after-init-hook 'global-company-mode))
+    :config
+    (progn
+      (let ((map company-active-map))
+        (define-key map (kbd "C-j") 'company-select-next)
+        (define-key map (kbd "C-k") 'company-select-previous)
+        (define-key map (kbd "C-l") 'company-complete-selection))
+      (setq company-idle-delay 0.0
+            company-show-numbers t
+            company-tooltip-idle-delay 0.0
+            company-echo-delay 0.0
+            company-minimum-prefix-length 1
+            company-tooltip-align-annotations t
+            company-dabbrev-ignore-case nil
+            company-dabbrev-downcase nil
+            company-ispell-dictionary (file-truename "~/.emacs.d/dict/words_alpha.txt")
+            ispell-alternate-dictionary (file-truename "~/.emacs.d/dict/words_alpha.txt")
+            company-transformers '(company-sort-by-backend-importance)
+            company-dabbrev-code-other-buffers 'code
+            company-dabbrev-ignore-case nil
+            company-dabbrev-downcase nil
+            company-dabbrev-code-time-limit 5
+            company-dabbrev-code-modes '(python-mode inferior-python-mode)
+            company-backends '(company-capf
+                               company-dabbrev-code
+                               company-keywords
+                               company-files
+                               company-ispell
+                               company-yasnippet
+                               company-abbrev))
+      (push (apply-partially #'cl-remove-if
+                             (lambda (c)
+                               (or (string-match-p "[^\x00-\x7F]+" c)
+                                   (string-match-p "[0-9]+" c)
+                                   (string-match-p "__.*__" c)
+                                   )))
+            company-transformers)
+      (defun ora-company-number ()
+        "Forward to `company-complete-number'. Unless the number is
+   potentially part of the candidate. In that case, insert the
+   number."
+        (interactive)
+        (let* ((k (this-command-keys))
+               (re (concat "^" company-prefix k)))
+          (if (or (cl-find-if (lambda (s) (string-match re s))
+                              company-candidates)
+                  (> (string-to-number k)
+                     (length company-candidates))
+                  (looking-back "[0-9]+\\.[0-9]*" (line-beginning-position)))
+              (self-insert-command 1)
+            (company-complete-number
+             (if (equal k "0")
+                 10
+               (string-to-number k))))))
+
+      (defun ora--company-good-prefix-p (orig-fn prefix)
+        (unless (and (stringp prefix) (string-match-p "\\`[0-9]+\\'" prefix))
+          (funcall orig-fn prefix)))
+
+      (advice-add 'company--good-prefix-p :around #'ora--company-good-prefix-p)
+
+      (defun cpkx-space ()
+        (interactive)
+        (company-abort)
+        (self-insert-command 1))
+
+      (let ((map company-active-map))
+        (mapc (lambda (x) (define-key map (format "%d" x) 'ora-company-number))
+              (number-sequence 0 9))
+        (define-key map " " 'cpkx-space)
+        (define-key map (kbd "<return>") nil))))
 
   (use-package company-box
     :diminish company-box-mode
     :hook (company-mode . company-box-mode))
 #+end_src
 
+*** Company-Statistics
+#+begin_src emacs-lisp
+  (use-package company-statistics
+    :after company
+    :config
+    (company-statistics-mode))
+#+end_src
+*** Company Prescient
+#+begin_src emacs-lisp
+  (use-package company-prescient
+    :after company
+    :config
+    (company-prescient-mode))
+#+end_src
+*** Company posframe
+#+begin_src emacs-lisp
+  (use-package company-posframe
+    :if (and (window-system) (version<= "26.1" emacs-version))
+    :diminish company-posframe-mode
+    :after company
+    :config
+    (push '(company-posframe-mode . nil)
+          desktop-minor-mode-table)
+    (setq company-posframe-show-indicator nil
+          company-posframe-show-metadata nil
+          company-posframe-quickhelp-delay nil)
+    (company-posframe-mode 1))
+#+end_src
+
+** Source Control
+*** Version Control
+#+begin_src emacs-lisp
+  (use-package diff-hl
+    :commands (diff-hl-mode
+               diff-hl-flydiff-mode
+               diff-hl-margin-minor-mode)
+    :init
+    (progn
+      (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh)
+      (add-hook 'emacs-lisp-mode-hook (lambda ()
+                                        (diff-hl-mode 1)
+                                        (diff-hl-flydiff-mode 1)
+                                        ))))
+#+end_src
+*** Git
+**** Magit
+#+begin_src emacs-lisp
+  (use-package magit
+    :commands (magit-status magit-init)
+    :general
+    (:keymaps 'magit-mode-map
+     "0" nil
+     "1" nil
+     "2" nil
+     "3" nil
+     "4" nil)
+    (cpkx/leader-keys
+      "gc"  'magit-clone
+      "gff" 'magit-find-file
+      "gfl" 'magit-log-buffer-file
+      "gfd" 'magit-diff-buffer-file-popup
+      "gi"  'magit-init
+      "gL"  'magit-list-repositories
+      "gm"  'magit-dispatch-popup
+      "gs"  'magit-status
+      "gS"  'magit-stage-file
+      "gU"  'magit-unstage-file)
+    (:keymaps 'magit-hunk-section-map
+     "RET" 'magit-diff-visit-worktree-file-other-window)
+    (:keymaps 'magit-file-section-map
+     "RET" 'magit-diff-visit-worktree-file-other-window)
+    :init
+    (add-hook 'magit-popup-mode-hook (lambda () (display-line-numbers-mode -1)))
+    (add-hook 'magit-status-mode-hook (lambda () (display-line-numbers-mode 1)))
+    (add-hook 'magit-revision-mode-hook (lambda () (display-line-numbers-mode 1)))
+    :config
+    (setq transient-display-buffer-action '(display-buffer-below-selected)
+          magit-completing-read-function #'ivy-completing-read
+          magit-diff-refine-hunk 'all))
+#+end_src
+**** Evil Magit
+#+begin_src emacs-lisp
+  (use-package evil-magit
+    :after (evil magit))
+#+end_src
+**** Magit Todos
+#+begin_src emacs-lisp
+  (use-package magit-todos
+    :after magit
+    :config
+    (setq magit-todos-exclude-globs '("*.pdf" "*.eps")
+          magit-todos-update 600)
+    (magit-todos-mode))
+#+end_src
+*** Github
+**** Grip Mode
+#+begin_src emacs-lisp
+  (use-package grip-mode
+    :commands grip-mode)
+#+end_src
 ** Languages
 *** Language Server Protocol
 #+begin_src emacs-lisp
@@ -1162,7 +1824,7 @@ Temporary solution to remove buffer face mode from modeline
 
 ** Productivity
 *** Syntax Check
-**** Toggle Check
+**** Flycheck
 #+begin_src emacs-lisp
   (defun cpkx/toggle-syntax-checking ()
     (interactive)
@@ -1173,6 +1835,94 @@ Temporary solution to remove buffer face mode from modeline
       (progn
         (flycheck-mode 1)
         (message "Flycheck mode enabled in current buffer"))))
+
+  (use-package flycheck
+    :ghook ('(python-mode-hook))
+    :init
+    (cpkx/leader-keys
+      "ts" 'cpkx/toggle-syntax-checking)
+    :config
+    (setq flycheck-display-errors-delay 0.2)
+    (flycheck-add-next-checker 'python-flake8 'python-pylint)
+    (cpkx/leader-keys
+      "eb" 'flycheck-buffer
+      "ec" 'flycheck-clear
+      "eh" 'flycheck-describe-checker
+      "es" 'flycheck-select-checker
+      "eS" 'flycheck-set-checker-executable
+      "ev" 'flycheck-verify-setup
+      "ey" 'flycheck-copy-errors-as-kill
+      "ex" 'flycheck-explain-error-at-point
+      ;; navigation
+      "en" 'flycheck-next-error
+      "ep" 'flycheck-previous-error
+      "el" 'flycheck-list-errors)
+    (cpkx/normal-keys
+      :keymaps 'flycheck-error-list-mode-map
+      "RET" 'flycheck-error-list-goto-error
+      "j" 'flycheck-error-list-next-error
+      "k" 'flycheck-error-list-previous-error
+      "q" 'quit-window)
+    (progn
+      ;; Custom fringe indicator
+      (when (and (fboundp 'define-fringe-bitmap)
+                 ;; (not syntax-checking-use-original-bitmaps)
+                 )
+        (define-fringe-bitmap 'cpkx-flycheck-fringe-indicator
+          (vector #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00011100
+                  #b00111110
+                  #b00111110
+                  #b00111110
+                  #b00011100
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000)))
+      (let ((bitmap 'cpkx-flycheck-fringe-indicator
+                    ))
+        (flycheck-define-error-level 'error
+                                     :severity 2
+                                     :overlay-category 'flycheck-error-overlay
+                                     :fringe-bitmap bitmap
+                                     :error-list-face 'flycheck-error-list-error
+                                     :fringe-face 'flycheck-fringe-error)
+        (flycheck-define-error-level 'warning
+                                     :severity 1
+                                     :overlay-category 'flycheck-warning-overlay
+                                     :fringe-bitmap bitmap
+                                     :error-list-face 'flycheck-error-list-warning
+                                     :fringe-face 'flycheck-fringe-warning)
+        (flycheck-define-error-level 'info
+                                     :severity 0
+                                     :overlay-category 'flycheck-info-overlay
+                                     :fringe-bitmap bitmap
+                                     :error-list-face 'flycheck-error-list-info
+                                     :fringe-face 'flycheck-fringe-info))))
+#+end_src
+**** Flycheck posframe
+#+begin_src emacs-lisp
+  (use-package flycheck-posframe
+    :if (and (window-system) (version<= "26.1" emacs-version))
+    :after flycheck
+    :config
+    (setq flycheck-posframe-border-width 1)
+    (set-face-attribute 'flycheck-posframe-background-face nil :inherit 'default)
+    (set-face-attribute 'flycheck-posframe-border-face nil :foreground "gray50")
+    (set-face-attribute 'flycheck-posframe-info-face nil :inherit 'flycheck-error-list-info)
+    (set-face-attribute 'flycheck-posframe-warning-face nil :inherit 'flycheck-error-list-warning)
+    (set-face-attribute 'flycheck-posframe-error-face nil :inherit 'flycheck-error-list-error)
+    (add-hook 'flycheck-mode-hook (lambda ()
+                                    (if (not (bound-and-true-p lsp-ui-sideline-mode))
+                                        (flycheck-posframe-mode))))
+    (flycheck-posframe-configure-pretty-defaults))
 #+end_src
 *** Helpful
 #+begin_src emacs-lisp
@@ -1193,7 +1943,6 @@ Temporary solution to remove buffer face mode from modeline
   :bind ("C-c C-f" . format-all-buffer))
 #+end_src
 
-*** Indentation
 *** Numericals
 **** Highlight Num
 #+begin_src emacs-lisp
@@ -1201,16 +1950,12 @@ Temporary solution to remove buffer face mode from modeline
     :hook (prog-mode . highlight-numbers-mode))
 #+end_src
 
-*** Color Identifiers
-**** Initial Setup
+*** Colours
+**** Color Identifiers
 #+begin_src emacs-lisp
   (use-package color-identifiers-mode
     :diminish color-identifiers-mode
     :hook (prog-mode . color-identifiers-mode))
-#+end_src
-
-**** Toggle Color Indentifiers
-#+begin_src emacs-lisp
   (defun cpkx/toggle-color-identifiers ()
     (interactive)
     (if (bound-and-true-p color-identifiers-mode)
@@ -1221,30 +1966,184 @@ Temporary solution to remove buffer face mode from modeline
         (color-identifiers-mode 1)
         (message "Color identifiers mode enabled in current buffer"))))
 #+end_src
-*** Parens
-**** Smart Parens
+
+**** Rainbow Mode
 #+begin_src emacs-lisp
-  (use-package smartparens
-    :hook (prog-mode . smartparens-mode)
-    :diminish smartparens-mode
-    :config
-;    ;; Stop pairing single quotes in elisp
-    (sp-local-pair 'emacs-lisp-mode "'" nil :actions nil)
-    (sp-local-pair 'org-mode "[" nil :actions nil))
+  (use-package rainbow-mode
+    :commands rainbow-mode
+    :init
+    (cpkx/leader-keys
+      "tc" 'rainbow-mode))
 #+end_src
 
+*** Parens
+**** Smart Parens
+***** Initial Setup
+#+begin_src emacs-lisp
+  (use-package smartparens
+    :diminish smartparens-mode
+    :config
+    (smartparens-global-mode t)
+    (smartparens-global-strict-mode t)
+    ;; :init
+    ;; smartparens #431 workaround for fixing conflict between smarparens and yasnippet
+    (add-hook 'yas-before-expand-snippet-hook (lambda () (smartparens-mode -1)))
+    (add-hook 'yas-after-exit-snippet-hook (lambda () (smartparens-mode 1)))
+    (cpkx/leader-keys
+      "k{" 'sp-wrap-curly
+      "k(" 'sp-wrap-round
+      "k[" 'sp-wrap-square
+      "ku" 'sp-unwrap-sexp
+      "kr" 'sp-rewrap-sexp
+      "tp" 'cpkx/toggle-smartparens)
+    (cpkx/all-states-keys
+      :prefix "M-s"
+      "." 'hydra-smartparens/body
+      ;; Moving
+      "a" 'sp-beginning-of-sexp
+      "e" 'sp-end-of-sexp
+      "f" 'sp-forward-sexp
+      "b" 'sp-backward-sexp
+      "n" 'sp-down-sexp
+      "N" 'sp-backward-down-sexp
+      "p" 'sp-up-sexp
+      "P" 'sp-backward-up-sexp
+
+      ;; Slurping & barfing
+      "h" 'sp-backward-slurp-sexp
+      "H" 'sp-backward-barf-sexp
+      "l" 'sp-forward-slurp-sexp
+      "L" 'sp-forward-barf-sexp
+
+      ;; Wrapping
+      "R"  'sp-rewrap-sexp
+      "u"  'sp-unwrap-sexp
+      "U"  'sp-backward-unwrap-sexp
+      "("  'sp-wrap-round
+      "{"  'sp-wrap-curly
+      "["  'sp-wrap-square
+      "'"  'cpkx/sp-wrap-single-quote
+      "\"" 'cpkx/sp-wrap-double-quote
+
+      ;; Sexp juggling
+      "S" 'sp-split-sexp
+      "s" 'sp-splice-sexp
+      "r" 'sp-raise-sexp
+      "j" 'sp-join-sexp
+      "t" 'sp-transpose-sexp
+      "A" 'sp-absorb-sexp
+      "E" 'sp-emit-sexp
+      "o" 'sp-convolute-sexp
+
+      ;; Destructive editing
+      "c" 'sp-change-inner :exit t
+      "C" 'sp-change-enclosing :exit t
+      "k" 'sp-kill-sexp
+      "K" 'sp-backward-kill-sexp
+      "M-k" 'cpkx/sp-kill-inside-sexp
+      "w" 'sp-copy-sexp)
+    (defun cpkx/toggle-smartparens ()
+      (interactive)
+      (if (bound-and-true-p smartparens-mode)
+          (progn
+            (smartparens-mode -1)
+            (smartparens-strict-mode -1)
+            (evil-smartparens-mode -1)
+            (message "Smartparens mode disabled in current buffer"))
+        (progn
+          (smartparens-mode 1)
+          (smartparens-strict-mode 1)
+          (evil-smartparens-mode 1)
+          (message "Smartparens mode enabled in current buffer"))))
+    (defhydra hydra-smartparens (:hint nil)
+      ;; Moving
+      ("a" sp-beginning-of-sexp)
+      ("e" sp-end-of-sexp)
+      ("f" sp-forward-sexp)
+      ("b" sp-backward-sexp)
+      ("n" sp-down-sexp)
+      ("N" sp-backward-down-sexp)
+      ("p" sp-up-sexp)
+      ("P" sp-backward-up-sexp)
+
+      ;; Slurping & barfing
+      ("h" sp-backward-slurp-sexp)
+      ("H" sp-backward-barf-sexp)
+      ("l" sp-forward-slurp-sexp)
+      ("L" sp-forward-barf-sexp)
+
+      ;; Wrapping
+      ("R" sp-rewrap-sexp)
+      ("u" sp-unwrap-sexp)
+      ("U" sp-backward-unwrap-sexp)
+      ("(" sp-wrap-round)
+      ("{" sp-wrap-curly)
+      ("[" sp-wrap-square)
+      ("'" cpkx/sp-wrap-single-quote)
+      ("\"" cpkx/sp-wrap-double-quote)
+
+      ;; Sexp juggling
+      ("S" sp-split-sexp)
+      ("s" sp-splice-sexp)
+      ("r" sp-raise-sexp)
+      ("j" sp-join-sexp)
+      ("t" sp-transpose-sexp)
+      ("A" sp-absorb-sexp)
+      ("E" sp-emit-sexp)
+      ("o" sp-convolute-sexp)
+
+      ;; Destructive editing
+      ("c" sp-change-inner :exit t)
+      ("C" sp-change-enclosing :exit t)
+      ("k" sp-kill-sexp)
+      ("K" sp-backward-kill-sexp)
+      ("M-k" cpkx/sp-kill-inside-sexp)
+      ("w" sp-copy-sexp)
+
+      ("q" nil)
+      ("g" nil)))
+
+   ;;;###autoload
+  (defun cpkx/sp-wrap-single-quote ()
+    (interactive)
+    (setq current-prefix-arg 0)
+    (sp-wrap-with-pair "'"))
+
+   ;;;###autoload
+  (defun cpkx/sp-wrap-double-quote ()
+    (interactive)
+    (setq current-prefix-arg 0)
+    (sp-wrap-with-pair "\""))
+
+   ;;;###autoload
+  (defun cpkx/sp-kill-inside-sexp ()
+    "Kill inside of sexp."
+    (interactive)
+    (sp-kill-sexp 0))
+
+  (advice-add 'sp-change-inner :after #'evil-insert-state)
+#+end_src
+
+***** Evil Smartparens
+#+begin_src emacs-lisp
+  (use-package evil-smartparens
+    :after (evil smartparens)
+    :diminish evil-smartparens-mode
+    :init
+    (add-hook 'smartparens-enabled-hook #'evil-smartparens-mode))
+#+end_src
 **** Highlight Paren
 #+begin_src emacs-lisp
-  ;(use-package highlight-parentheses
-  ;  :diminish highlight-parentheses-mode
-  ;  :hook (prog-mode . highlight-parentheses-mode)
-  ;  :config
-  ;  (setq hl-paren-delay 0.2)
-  ;  (setq hl-paren-colors '("Springgreen3"
-   ;                         "IndianRed1"
-   ;                         "IndianRed3"
-   ;                         "IndianRed4"))
-   ; (set-face-attribute 'hl-paren-face nil :weight 'ultra-bold))
+  (use-package highlight-parentheses
+    :diminish highlight-parentheses-mode
+    :ghook ('prog-mode-hook #'highlight-parentheses-mode)
+    :config
+    (setq hl-paren-delay 0)
+    (setq hl-paren-colors '("Springgreen3"
+                            "IndianRed1"
+                            "IndianRed3"
+                            "IndianRed4"))
+    (set-face-attribute 'hl-paren-face nil :weight 'ultra-bold))
 #+end_src
 **** Rainbow
 #+begin_src emacs-lisp
@@ -1410,9 +2309,51 @@ Saves
 #+end_src
 
 * Writing
-** Dictionary
-*** iSpell
-**** Initial Config
+** Word Check
+*** Flyspell
+**** Flyspell mode
+#+begin_src emacs-lisp :tangle no
+  (defun cpkx/toggle-flyspell ()
+    (interactive)
+    (if (bound-and-true-p flyspell-mode)
+        (progn
+          (flyspell-mode -1)
+          (message "Flyspell mode disabled in current buffer"))
+      (progn
+        (flyspell-mode 1)
+        (message "Flyspell mode enabled in current buffer"))))
+
+  (use-package flyspell
+    :diminish flyspell-mode
+    :general
+    (cpkx/leader-keys
+      "t M-s" 'cpkx/toggle-flyspell
+      "M-s b" 'flyspell-buffer
+      "M-s n" 'flyspell-goto-next-error
+      "M-s p" 'flyspell-correct-at-point)
+    (cpkx/leader-keys
+      "M-s ." 'hydra-spelling/body)
+    :init
+    (add-hook 'prog-mode-hook #'flyspell-prog-mode)
+    (add-hook 'text-mode-hook #'turn-on-flyspell)
+    (add-hook 'org-mode-hook #'turn-on-flyspell)
+    :config
+    (defhydra hydra-spelling ()
+      ("b" flyspell-buffer "check buffer")
+      ("d" ispell-change-dictionary "change dictionary")
+      ("n" flyspell-goto-next-error "next")
+      ("c" flyspell-correct-previous-word-generic "correct")
+      ("q" nil "quit")))
+#+end_src
+
+**** Flyspell correct
+#+begin_src emacs-lisp :tangle no
+  (use-package flyspell-correct
+    :commands (flyspell-correct-wrapper))
+#+end_src
+*** Dictionary
+**** iSpell
+***** Initial Config
 #+begin_src emacs-lisp
   (use-package ispell
     :ensure nil
@@ -1423,7 +2364,7 @@ Saves
             ispell-look-command "/bin/grep"
             ispell-look-options "-Ei")))
 #+end_src
-**** Lookup words function
+***** Lookup words function
 #+begin_src emacs-lisp
   (defun cpkx/ispell-lookup-words (word &optional lookup-dict)
     (if (null lookup-dict)
@@ -1490,19 +2431,31 @@ Saves
   (diminish 'visual-line-mode)
 #+end_src
 
+** Visual Fill Column
+#+begin_src emacs-lisp
+  (use-package visual-fill-column
+    :commands visual-fill-column-mode
+    :config
+    (add-hook 'visual-fill-column-mode-hook 'visual-line-mode))
+#+end_src
+** Fix Word
+#+begin_src emacs-lisp
+  (use-package fix-word
+    :commands (fix-word-upcase
+               fix-word-downcase
+               fix-word-capitalize)
+    :init
+    (cpkx/all-states-keys
+     "M-u" 'fix-word-upcase
+     "M-l" 'fix-word-downcase
+     "M-c" 'fix-word-capitalize))
+#+end_src
 ** Line Spacing
 #+begin_src emacs-lisp
 ;;; Line spacing, can be 0 for code and 1 or 2 for text
 (setq-default line-spacing 2)
 #+end_src
 
-** Export
-*** Pandoc
-#+begin_src emacs-lisp
-  (use-package pandoc-mode
-    :hook ((text-mode) . pandoc-mode)
-    :diminish pandoc-mode)
-#+end_src
 ** Text Scaling
 *** Default Text Scale
 #+begin_src emacs-lisp
@@ -1522,6 +2475,20 @@ Saves
     ("q" nil "quit"))
   (cpkx/leader-keys
     "wz" 'hydra-window-scale/body)
+#+end_src
+** Clipboard
+#+begin_src emacs-lisp
+  (cpkx/leader-keys
+    "xp" 'clipboard-yank
+    "xy" 'clipboard-kill-ring-save
+    "xc" 'clipboard-kill-region)
+#+end_src
+** Export
+*** Pandoc
+#+begin_src emacs-lisp
+  (use-package pandoc-mode
+    :hook ((text-mode) . pandoc-mode)
+    :diminish pandoc-mode)
 #+end_src
 * Applications
 ** Calendar
@@ -1593,6 +2560,46 @@ Saves
     (cpkx/leader-keys
       "ac" 'calendar))
 #+end_src 
+
+** Projectile
+#+begin_src emacs-lisp
+  (use-package projectile
+    :diminish projectile-mode
+    :commands (projectile-ack
+               projectile-ag
+               projectile-compile-project
+               projectile-dired
+               projectile-find-dir
+               projectile-find-file
+               projectile-find-tag
+               projectile-test-project
+               projectile-grep
+               projectile-invalidate-cache
+               projectile-kill-buffers
+               projectile-multi-occur
+               projectile-project-p
+               projectile-project-root
+               projectile-recentf
+               projectile-regenerate-tags
+               projectile-replace
+               projectile-replace-regexp
+               projectile-run-async-shell-command-in-root
+               projectile-run-shell-command-in-root
+               projectile-switch-project
+               projectile-switch-to-buffer
+               projectile-vc)
+    :config
+    (progn
+      (setq projectile-indexing-method 'hybrid)
+      (add-to-list 'projectile-other-file-alist '("tex" . ("pdf")))
+      (add-to-list 'projectile-other-file-alist '("pdf" . ("tex")))
+      (setq projectile-project-root-files-functions
+            '(projectile-root-top-down projectile-root-local
+                                       projectile-root-bottom-up
+                                       projectile-root-top-down-recurring))
+      (setq projectile-project-root-files #'(".projectile"))
+      (projectile-mode)))
+#+end_src
 
 ** PDF
 *** PDF Tools
