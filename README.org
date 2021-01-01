@@ -863,9 +863,10 @@ Temporary solution to remove buffer face mode from modeline
                                           ; "th"  '(:ignore t :which-key "highlight")
       "T"   '(:ignore t :which-key "Themes")
       "w"   '(:ignore t :which-key "windows")
-      "x"   '(:ignore t :which-key "text")))
+      "x"   '(:ignore t :which-key "text"))
                                           ;"xS"  '(:ignore t :which-key "Synosaurus")
                                           ;"z"   '(:ignore t :which-key "zoom")))
+    (which-key-mode))
 #+end_src
 
 #+RESULTS:
