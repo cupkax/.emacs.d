@@ -35,7 +35,6 @@
   - [[#general][General]]
   - [[#hydra][Hydra]]
   - [[#evil][Evil]]
-  - [[#shell-command][Shell Command]]
   - [[#universal-argument][Universal Argument]]
   - [[#exit-emacs][Exit Emacs]]
   - [[#which-key][Which Key]]
@@ -148,6 +147,14 @@
 #+end_src
 ** =utf-8-unix= System
 #+begin_src emacs-lisp
+  (defun doom-modeline-conditional-buffer-encoding ()
+    "We expect the encoding to be LF UTF-8, so only show the modeline when this is not the case"
+    (setq-local doom-modeline-buffer-encoding
+                (unless (or (eq buffer-file-coding-system 'utf-8-unix)
+                            (eq buffer-file-coding-system 'utf-8)))))
+
+  (add-hook 'after-change-major-mode-hook #'doom-modeline-conditional-buffer-encoding)
+
   (prefer-coding-system 'utf-8-unix)
   (set-default-coding-systems 'utf-8)
 #+end_src
@@ -158,7 +165,7 @@
 #+end_src
 ** C-z undo
 #+begin_src emacs-lisp
-  (global-set-key (kbd "C-z") 'undo) ;Emacs default is bound to hide Emacs.
+  (global-set-key (kbd "C-z") 'undo)
   (global-set-key (kbd "C-SPC") nil)
 #+end_src
 
@@ -433,7 +440,7 @@ Make some word or string show as pretty Unicode symbols.
     (load-theme 'doom-dracula t))
 #+end_src
 ** Modeline
-*** TODO Eldoic (add hook)
+*** TODO Eldoc (add hook)
 #+begin_src emacs-lisp
   (use-package eldoc)
 #+end_src
@@ -458,8 +465,9 @@ Make some word or string show as pretty Unicode symbols.
   (setq display-time-24hr-format t)
   (setq display-time-default-load-average nil)
   (setq display-time-day-and-date t)
-  (setq display-time-mode t)
+  (display-time-mode)
 #+end_src
+
 *** Yes/No -> y/n
 #+begin_src emacs-lisp
   (fset 'yes-or-no-p 'y-or-n-p)
@@ -801,11 +809,6 @@ Temporary solution to remove buffer face mode from modeline
     (with-eval-after-load 'reftex (evil-collection-reftex-setup))
     (with-eval-after-load 'magit  (evil-collection-magit-todos-setup)))
 #+end_src
-** Shell Command
-#+begin_src emacs-lisp
-  (cpkx/leader-keys
-    "!" 'shell-command)
-#+end_src
 ** Universal Argument
 #+begin_src emacs-lisp
   (cpkx/leader-keys
@@ -874,16 +877,6 @@ Temporary solution to remove buffer face mode from modeline
 * Buffer/Frame/Window Management
 ** Buffer Management
 *** Buffer Functions
-**** Switch Alternate Buffer
-#+begin_src emacs-lisp
-  (defun cpkx/alternate-buffer (&optional window)
-    (interactive)
-    (let ((current-buffer (window-buffer window)))
-      (without-purpose (switch-to-buffer
-                        (cl-find-if (lambda (buffer)
-                                      (not (eq buffer current-buffer)))
-                                    (mapcar #'car (window-prev-buffers window)))))))
-#+end_src
 **** Kill Buffer
 #+begin_src emacs-lisp
   (defun cpkx/kill-this-buffer (&optional arg)
@@ -913,11 +906,11 @@ Temporary solution to remove buffer face mode from modeline
     "bn"  'next-buffer
     "bp"  'previous-buffer
     "br"  'revert-buffer
-    "TAB" 'cpkx/alternate-buffer
     "bx"  'kill-buffer-and-window
     "fs"  'save-buffer
     "bm"  'cpkx/toggle-maximize-buffer)
 #+end_src
+
 ** Frame Management
 *** Frame Bindings
 #+begin_src emacs-lisp
@@ -1430,16 +1423,17 @@ Temporary solution to remove buffer face mode from modeline
 *** Counsel
 #+begin_src emacs-lisp
   (use-package counsel
+    :diminish counsel-mode
     :general
-    ("M-x" 'counsel-M-x)
+    ("M-x"  'counsel-M-x)
     (cpkx/non-insert-keys
       "M-f" 'counsel-find-file)
     (cpkx/leader-keys
       ;; files
-      "fb" 'counsel-bookmark
-      "ff" 'counsel-find-file
-      "fl" 'counsel-locate
-      "fr" 'counsel-recoll
+      "fb"  'counsel-bookmark
+      "ff"  'counsel-find-file
+      "fl"  'counsel-locate
+      "fr"  'counsel-recoll
       ;; help
       "?"   'counsel-descbinds
       "hda" 'counsel-apropos
@@ -1447,29 +1441,27 @@ Temporary solution to remove buffer face mode from modeline
       "hdF" 'counsel-describe-face
       "hdv" 'counsel-describe-variable
       "hi"  'counsel-info-lookup-symbol
-      "ji" 'counsel-imenu
+      "ji"  'counsel-imenu
       ;; register/ring
       "ry"  'counsel-yank-pop
       "rm"  'counsel-mark-ring
       ;; search
-      "sa" 'counsel-ag
-      "sp" 'counsel-projectile-ag
+      "sa"  'counsel-ag
+      "sp"  'counsel-projectile-ag
       ;; themes
       "Ts"  'counsel-load-theme
       ;; insert color
-      "ic" 'counsel-colors-emacs
-      "iu" 'counsel-unicode-char)
+      "ic"  'counsel-colors-emacs
+      "iu"  'counsel-unicode-char)
     (cpkx/all-states-keys
       "M-y" 'counsel-yank-pop)
-    (cpkx/all-states-keys
-      :keymaps 'inferior-python-mode-map
-      "M-h" 'counsel-shell-history)
     :config
     (setq counsel-yank-pop-preselect-last t
           counsel-ag-base-command "ag --vimgrep --skip-vcs-ignores %s")
     (add-to-list 'ivy-height-alist `(counsel-yank-pop . ,ivy-height))
     (counsel-mode 1))
 #+end_src
+
 *** Counsel Projectile
 #+begin_src emacs-lisp
   (use-package counsel-projectile
@@ -2554,8 +2546,6 @@ Saves
                projectile-regenerate-tags
                projectile-replace
                projectile-replace-regexp
-               projectile-run-async-shell-command-in-root
-               projectile-run-shell-command-in-root
                projectile-switch-project
                projectile-switch-to-buffer
                projectile-vc)
