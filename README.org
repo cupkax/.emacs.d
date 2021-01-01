@@ -31,14 +31,14 @@
   - [[#themes][Themes]]
   - [[#modeline][Modeline]]
 - [[#bindings][Bindings]]
-  - [[#which-key][Which Key]]
   - [[#esc-cancel][ESC Cancel]]
-  - [[#hydra][Hydra]]
   - [[#general][General]]
+  - [[#hydra][Hydra]]
   - [[#evil][Evil]]
   - [[#shell-command][Shell Command]]
   - [[#universal-argument][Universal Argument]]
   - [[#exit-emacs][Exit Emacs]]
+  - [[#which-key][Which Key]]
 - [[#bufferframewindow-management][Buffer/Frame/Window Management]]
   - [[#buffer-management][Buffer Management]]
   - [[#frame-management][Frame Management]]
@@ -241,11 +241,11 @@
                                       (recentf-mode)
                                       (recentf-track-opened-file))))
     :config
-    (progn
-      (setq recentf-max-saved-items 2000
-            recentf-auto-cleanup 'never
-            (recentf-mode 1))))
+      (setq recentf-max-saved-items 2000)
+      (setq recentf-auto-cleanup 'never)
+      (recentf-mode 1))
 #+end_src
+
 ** Custom File
 #+begin_src emacs-lisp
 (setq custom-file "~/.emacs.d/custom-settings.el")
@@ -299,26 +299,6 @@
     (beacon-mode 1))
 #+end_src
 
-*** Line Numbers
-#+begin_src emacs-lisp
-  (use-package display-line-numbers
-    :if (version<= "26.1" emacs-version)
-    :ghook ('after-init-hook #'global-display-line-numbers-mode)
-    :general
-    (cpkx/leader-keys
-      "tl" 'cpkx/toggle-line-numbers-type)
-    :config
-    (setq display-line-numbers-type 'visual)
-    (defun cpkx/toggle-line-numbers-type ()
-      (interactive)
-      (if (eq display-line-numbers t)
-          (progn
-            (setq display-line-numbers 'visual)
-            (message "show visual line numbers"))
-        (progn
-          (setq display-line-numbers t)
-          (message "Show absolute line numbers")))))
-#+end_src
 ** Fonts and Icons
 *** Fonts
 **** Font Face
@@ -453,13 +433,9 @@ Make some word or string show as pretty Unicode symbols.
     (load-theme 'doom-dracula t))
 #+end_src
 ** Modeline
-*** Eldoc
+*** TODO Eldoic (add hook)
 #+begin_src emacs-lisp
-  (use-package eldoc
-    :ghook ('(emacs-lisp-mode-hook
-              lisp-interaction-mode-hook
-              ielm-mode-hook
-              eval-expression-minibuffer-setup-hook)))
+  (use-package eldoc)
 #+end_src
 *** Doom Modeline
 #+begin_src emacs-lisp
@@ -496,53 +472,44 @@ Temporary solution to remove buffer face mode from modeline
 #+end_src
 
 * Bindings
-** Which Key
-*** Which Key Mode
-#+begin_src emacs-lisp
-  (use-package which-key
-    :diminish which-key-mode
-    :config
-    (setq which-key-idle-delay 0
-          which-key-idle-secondary-delay 0
-          which-key-sort-order 'which-key-key-order-alpha)
-    (cpkx/leader-keys
-      "a"   '(:ignore t :which-key "applications")
-      "ao"  '(:ignore t :which-key "org")
-      "aof" '(:ignore t :which-key "feed")
-      "aok" '(:ignore t :which-key "clock")
-      "b"   '(:ignore t :which-key "buffers")
-      "c"   '(:ignore t :which-key "comments")
-      "C"   '(:ignore t :which-key "Capture")
-      "e"   '(:ignore t :which-key "errors")
-      "f"   '(:ignore t :which-key "files")
-      "F"   '(:ignore t :which-key "Frames")
-      "g"   '(:ignore t :which-key "git/vc")
-      "gf"  '(:ignore t :which-key "files")
-      "h"   '(:ignore t :which-key "help")
-      "i"   '(:ignore t :which-key "insert")
-      "iS"  '(:ignore t :which-key "auto-yas")
-      "j"   '(:ignore t :which-key "jump")
-      "p"   '(:ignore t :which-key "projects")
-      "ps"  '(:ignore t :which-key "search")
-      "q"   '(:ignore t :which-key "quit")
-      "r"   '(:ignore t :which-key "regs/rings/replace")
-      "s"   '(:ignore t :which-key "search")
-      "M-s" '(:ignore t :which-key "Spell/Grammar")
-      "t"   '(:ignore t :which-key "toggles")
-      "th"  '(:ignore t :which-key "highlight")
-      "T"   '(:ignore t :which-key "Themes")
-      "w"   '(:ignore t :which-key "windows")
-      "wp"  '(:ignore t :which-key "popwin")
-      "x"   '(:ignore t :which-key "text")
-      "xS"  '(:ignore t :which-key "Synosaurus")
-      "z"   '(:ignore t :which-key "zoom"))
-    (which-key-mode 1))
-#+end_src
-
 ** ESC Cancel
 #+begin_src emacs-lisp
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+end_src
+** General
+#+begin_src emacs-lisp
+  (use-package general
+    :config
+    (progn
+      (general-create-definer cpkx/normal-keys
+        :states  'normal
+        :keymaps 'override)
+      (general-create-definer cpkx/motion-keys
+        :states  'motion
+        :keymaps 'override)
+      (general-create-definer cpkx/non-insert-keys
+        :states  '(normal visual motion)
+        :keymaps 'override)
+      (general-create-definer cpkx/leader-keys
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  "SPC"
+        :non-normal-prefix "M-SPC")
+      (general-create-definer cpkx/leader-keys-major-mode
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  ","
+        :non-normal-prefix "M-,")
+      (general-create-definer cpkx/leader-keys-minor-mode
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override
+        :prefix  ";"
+        :non-normal-prefix "M-;")
+      (general-create-definer cpkx/all-states-keys
+        :states  '(normal visual motion emacs insert)
+        :keymaps 'override)))
+#+end_src
+
 ** Hydra
 *** Initial Setup
 #+begin_src emacs-lisp
@@ -591,40 +558,6 @@ Temporary solution to remove buffer face mode from modeline
                            ("P" smartparens-global-strict-mode "smartparens strict" :toggle t)
                            ("c" flycheck-mode "flycheck" :toggle t)
                            ("s" flyspell-mode "flyspell" :toggle t)))))
-#+end_src
-
-** General
-#+begin_src emacs-lisp
-  (use-package general
-    :config
-    (progn
-      (general-create-definer cpkx/normal-keys
-        :states  'normal
-        :keymaps 'override)
-      (general-create-definer cpkx/motion-keys
-        :states  'motion
-        :keymaps 'override)
-      (general-create-definer cpkx/non-insert-keys
-        :states  '(normal visual motion)
-        :keymaps 'override)
-      (general-create-definer cpkx/leader-keys
-        :states  '(normal visual motion emacs insert)
-        :keymaps 'override
-        :prefix  "SPC"
-        :non-normal-prefix "M-SPC")
-      (general-create-definer cpkx/leader-keys-major-mode
-        :states  '(normal visual motion emacs insert)
-        :keymaps 'override
-        :prefix  ","
-        :non-normal-prefix "M-,")
-      (general-create-definer cpkx/leader-keys-minor-mode
-        :states  '(normal visual motion emacs insert)
-        :keymaps 'override
-        :prefix  ";"
-        :non-normal-prefix "M-;")
-      (general-create-definer cpkx/all-states-keys
-        :states  '(normal visual motion emacs insert)
-        :keymaps 'override)))
 #+end_src
 
 ** Evil
@@ -698,10 +631,9 @@ Temporary solution to remove buffer face mode from modeline
     :config
     (evil-escape-mode))
 #+end_src
-*** Evil Anzu
+*** TODO Evil Anzu (add hook)
 #+begin_src emacs-lisp
   (use-package evil-anzu
-    :ghook ('after-init-hook #'global-anzu-mode)
     :diminish anzu-mode
     :general
     (cpkx/leader-keys
@@ -781,19 +713,19 @@ Temporary solution to remove buffer face mode from modeline
   (use-package evil-numbers
     :general
     (cpkx/leader-keys
-      "n" '(:ignore t :wk "numbers")
+      ;"n" '(:ignore t :wk "numbers")
       "ni" 'evil-numbers/inc-at-pt
       "nd" 'evil-numbers/dec-at-pt
       "n." 'hydra-evil-numbers/body)
     :config
     (defhydra hydra-evil-numbers (:hint nil)
-      "
-  Evil Numbers: [_i_] increase [_d_] decrease [0..9] prefix [_q_] exit
-  "
       ("i" evil-numbers/inc-at-pt)
       ("d" evil-numbers/dec-at-pt)
       ("q" nil :exit t)))
 #+end_src
+
+#+RESULTS:
+
 *** Evil Args
 #+begin_src emacs-lisp
   (use-package evil-args
@@ -851,7 +783,7 @@ Temporary solution to remove buffer face mode from modeline
 *** Evil Owl
 #+begin_src emacs-lisp
   (use-package evil-owl
-    :diminish: evil-owl-mode
+    :diminish evil-owl-mode
     :after evil
     :config
     (setq evil-owl-register-char-limit 100
@@ -894,6 +826,49 @@ Temporary solution to remove buffer face mode from modeline
     "qr" 'restart-emacs
     "qd" 'cpkx/restart-emacs-debug-init)
 #+end_src
+
+** Which Key
+#+begin_src emacs-lisp
+  (use-package which-key
+    :diminish which-key-mode
+    :config
+    (setq which-key-idle-delay 0
+          which-key-idle-secondary-delay 0
+          which-key-sort-order 'which-key-key-order-alpha)
+    (cpkx/leader-keys
+      "a"   '(:ignore t :which-key "applications")
+                                          ;"ao"  '(:ignore t :which-key "org")
+                                          ;"aof" '(:ignore t :which-key "feed")
+                                          ;"aok" '(:ignore t :which-key "clock")
+      "b"   '(:ignore t :which-key "buffers")
+      "c"   '(:ignore t :which-key "comments")
+                                          ;"C"   '(:ignore t :which-key "Capture")
+                                          ;"e"   '(:ignore t :which-key "errors")
+      "f"   '(:ignore t :which-key "files")
+      "F"   '(:ignore t :which-key "Frames")
+      "g"   '(:ignore t :which-key "git/vc")
+      "gf"  '(:ignore t :which-key "files")
+      "h"   '(:ignore t :which-key "help")
+      "i"   '(:ignore t :which-key "insert")
+      "j"   '(:ignore t :which-key "jump")
+      "k"   '(:ignore t :which-key "smart-paren")
+      "n"   '(:ignore t :which-key "numbers")
+      "p"   '(:ignore t :which-key "projects")
+      "ps"  '(:ignore t :which-key "search")
+      "q"   '(:ignore t :which-key "quit")
+      "r"   '(:ignore t :which-key "regs/rings/replace")
+      "s"   '(:ignore t :which-key "search")
+                                          ; "M-s" '(:ignore t :which-key "Spell/Grammar")
+      "t"   '(:ignore t :which-key "toggles")
+                                          ; "th"  '(:ignore t :which-key "highlight")
+      "T"   '(:ignore t :which-key "Themes")
+      "w"   '(:ignore t :which-key "windows")
+      "x"   '(:ignore t :which-key "text")))
+                                          ;"xS"  '(:ignore t :which-key "Synosaurus")
+                                          ;"z"   '(:ignore t :which-key "zoom")))
+#+end_src
+
+#+RESULTS:
 
 * Buffer/Frame/Window Management
 ** Buffer Management
@@ -1510,16 +1485,6 @@ Temporary solution to remove buffer face mode from modeline
     :config
     (counsel-projectile-mode))
 #+end_src
-*** Counsel Dash
-#+begin_src emacs-lisp
-  (use-package counsel-dash
-    :general
-    (cpkx/leader-keys
-      "d" '(:ignore t :wk "documents")
-      "dh" 'counsel-dash)
-    :config
-    (setq counsel-dash-browser-func 'eww))
-#+end_src
 *** Swiper
 #+begin_src emacs-lisp
   (use-package swiper
@@ -1824,20 +1789,19 @@ Temporary solution to remove buffer face mode from modeline
 
 ** Productivity
 *** Syntax Check
-**** Flycheck
+**** TODO Flycheck (add hook)
 #+begin_src emacs-lisp
   (defun cpkx/toggle-syntax-checking ()
     (interactive)
     (if (bound-and-true-p flycheck-mode)
-        (progn
-          (flycheck-mode -1)
-          (message "Flycheck mode disabled in current buffer"))
+	(progn
+	  (flycheck-mode -1)
+	  (message "Flycheck mode disabled in current buffer"))
       (progn
-        (flycheck-mode 1)
-        (message "Flycheck mode enabled in current buffer"))))
+	(flycheck-mode 1)
+	(message "Flycheck mode enabled in current buffer"))))
 
   (use-package flycheck
-    :ghook ('(python-mode-hook))
     :init
     (cpkx/leader-keys
       "ts" 'cpkx/toggle-syntax-checking)
@@ -1866,51 +1830,55 @@ Temporary solution to remove buffer face mode from modeline
     (progn
       ;; Custom fringe indicator
       (when (and (fboundp 'define-fringe-bitmap)
-                 ;; (not syntax-checking-use-original-bitmaps)
-                 )
-        (define-fringe-bitmap 'cpkx-flycheck-fringe-indicator
-          (vector #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00011100
-                  #b00111110
-                  #b00111110
-                  #b00111110
-                  #b00011100
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000
-                  #b00000000)))
+		 ;; (not syntax-checking-use-original-bitmaps)
+		 )
+	(define-fringe-bitmap 'cpkx-flycheck-fringe-indicator
+	  (vector #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00011100
+		  #b00111110
+		  #b00111110
+		  #b00111110
+		  #b00011100
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000
+		  #b00000000)))
       (let ((bitmap 'cpkx-flycheck-fringe-indicator
-                    ))
-        (flycheck-define-error-level 'error
-                                     :severity 2
-                                     :overlay-category 'flycheck-error-overlay
-                                     :fringe-bitmap bitmap
-                                     :error-list-face 'flycheck-error-list-error
-                                     :fringe-face 'flycheck-fringe-error)
-        (flycheck-define-error-level 'warning
-                                     :severity 1
-                                     :overlay-category 'flycheck-warning-overlay
-                                     :fringe-bitmap bitmap
-                                     :error-list-face 'flycheck-error-list-warning
-                                     :fringe-face 'flycheck-fringe-warning)
-        (flycheck-define-error-level 'info
-                                     :severity 0
-                                     :overlay-category 'flycheck-info-overlay
-                                     :fringe-bitmap bitmap
-                                     :error-list-face 'flycheck-error-list-info
-                                     :fringe-face 'flycheck-fringe-info))))
+		    ))
+	(flycheck-define-error-level 'error
+				     :severity 2
+				     :overlay-category 'flycheck-error-overlay
+				     :fringe-bitmap bitmap
+				     :error-list-face 'flycheck-error-list-error
+				     :fringe-face 'flycheck-fringe-error)
+	(flycheck-define-error-level 'warning
+				     :severity 1
+				     :overlay-category 'flycheck-warning-overlay
+				     :fringe-bitmap bitmap
+				     :error-list-face 'flycheck-error-list-warning
+				     :fringe-face 'flycheck-fringe-warning)
+	(flycheck-define-error-level 'info
+				     :severity 0
+				     :overlay-category 'flycheck-info-overlay
+				     :fringe-bitmap bitmap
+				     :error-list-face 'flycheck-error-list-info
+				     :fringe-face 'flycheck-fringe-info))))
 #+end_src
+
+#+RESULTS:
+| use-package | flycheck/:config: Symbol’s function definition is void: cpkx/leader-keys | :error | nil |
+| use-package | flycheck/:init: Symbol’s function definition is void: cpkx/leader-keys   | :error | nil |
+
 **** Flycheck posframe
 #+begin_src emacs-lisp
   (use-package flycheck-posframe
-    :if (and (window-system) (version<= "26.1" emacs-version))
     :after flycheck
     :config
     (setq flycheck-posframe-border-width 1)
@@ -1924,6 +1892,7 @@ Temporary solution to remove buffer face mode from modeline
                                         (flycheck-posframe-mode))))
     (flycheck-posframe-configure-pretty-defaults))
 #+end_src
+
 *** Helpful
 #+begin_src emacs-lisp
   (use-package helpful
@@ -2045,16 +2014,16 @@ Temporary solution to remove buffer face mode from modeline
     (defun cpkx/toggle-smartparens ()
       (interactive)
       (if (bound-and-true-p smartparens-mode)
-          (progn
-            (smartparens-mode -1)
-            (smartparens-strict-mode -1)
-            (evil-smartparens-mode -1)
-            (message "Smartparens mode disabled in current buffer"))
-        (progn
-          (smartparens-mode 1)
-          (smartparens-strict-mode 1)
-          (evil-smartparens-mode 1)
-          (message "Smartparens mode enabled in current buffer"))))
+	  (progn
+	    (smartparens-mode -1)
+	    (smartparens-strict-mode -1)
+	    (evil-smartparens-mode -1)
+	    (message "Smartparens mode disabled in current buffer"))
+	(progn
+	  (smartparens-mode 1)
+	  (smartparens-strict-mode 1)
+	  (evil-smartparens-mode 1)
+	  (message "Smartparens mode enabled in current buffer"))))
     (defhydra hydra-smartparens (:hint nil)
       ;; Moving
       ("a" sp-beginning-of-sexp)
@@ -2124,6 +2093,8 @@ Temporary solution to remove buffer face mode from modeline
   (advice-add 'sp-change-inner :after #'evil-insert-state)
 #+end_src
 
+#+RESULTS:
+
 ***** Evil Smartparens
 #+begin_src emacs-lisp
   (use-package evil-smartparens
@@ -2132,17 +2103,16 @@ Temporary solution to remove buffer face mode from modeline
     :init
     (add-hook 'smartparens-enabled-hook #'evil-smartparens-mode))
 #+end_src
-**** Highlight Paren
+**** TODO Highlight Paren (add hook)
 #+begin_src emacs-lisp
   (use-package highlight-parentheses
     :diminish highlight-parentheses-mode
-    :ghook ('prog-mode-hook #'highlight-parentheses-mode)
     :config
     (setq hl-paren-delay 0)
     (setq hl-paren-colors '("Springgreen3"
-                            "IndianRed1"
-                            "IndianRed3"
-                            "IndianRed4"))
+			    "IndianRed1"
+			    "IndianRed3"
+			    "IndianRed4"))
     (set-face-attribute 'hl-paren-face nil :weight 'ultra-bold))
 #+end_src
 **** Rainbow
@@ -2627,10 +2597,12 @@ Saves
 #+begin_src emacs-lisp
   (setq inhibit-startup-echo-area-message "cpkx")
   (setq inhibit-startup-screen t)
+  (setq emacs-load-start-time (current-time))
   (when (require 'time-date nil t)
     (message "Emacs startup time: %.2f seconds."
              (time-to-seconds (time-since emacs-load-start-time))))
 #+end_src
+
 ** Garbage Collection Threshold
 #+begin_src emacs-lisp
   (setq gc-cons-threshold 800000
