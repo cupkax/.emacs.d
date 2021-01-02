@@ -440,10 +440,14 @@ Make some word or string show as pretty Unicode symbols.
     (load-theme 'doom-dracula t))
 #+end_src
 ** Modeline
-*** TODO Eldoc (add hook)
+*** Eldoc
 #+begin_src emacs-lisp
-  (use-package eldoc)
+  (use-package eldoc
+    :hook ((emacs-lisp-mode
+            lisp-interaction-mode
+            eval-expression-minibuffer-setup-hook) . eldoc-mode))
 #+end_src
+
 *** Doom Modeline
 #+begin_src emacs-lisp
   (use-package doom-modeline
@@ -539,7 +543,7 @@ Temporary solution to remove buffer face mode from modeline
           (list (list 'cpkx/posframe #'cpkx/hydra-posframe-show #'cpkx/hydra-posframe-hide))
           hydra--work-around-dedicated nil))
 #+end_src
-*** TODO Pretty Hydra
+*** Pretty Hydra
 #+begin_src emacs-lisp
   (use-package pretty-hydra
     :init
@@ -547,25 +551,25 @@ Temporary solution to remove buffer face mode from modeline
       "t." 'hydra-toggles/body)
     :config
     (pretty-hydra-define hydra-toggles
-                         (:hint nil :color amaranth :quit-key "q")
-                         ("Basic"
-                          (("n" display-line-numbers-mode "line number" :toggle t)
-                           ("N" cpkx/toggle-line-numbers-type "line number type")
-                           ("L" linum-mode "Exact line number" :toggle t)
-                           ("w" whitespace-mode "whitespace" :toggle t)
-                           ("r" rainbow-mode "rainbow" :toggle t))
-                          "Highlight"
-                          (("S" highlight-symbol-mode "symbol" :toggle t)
-                           ("l" hl-line-mode "line" :toggle t)
-                           ("t" hl-todo-mode "todo" :toggle t)
-                           ("i" color-identifiers-mode "identifiers" :toggle t))
-                          "UI"
-                          (("m" hide-mode-line-mode "mode line" :toggle t))
-                          "Coding"
-                          (("p" smartparens-global-mode "smartparens" :toggle t)
-                           ("P" smartparens-global-strict-mode "smartparens strict" :toggle t)
-                           ("c" flycheck-mode "flycheck" :toggle t)
-                           ("s" flyspell-mode "flyspell" :toggle t)))))
+      (:hint nil :color amaranth :quit-key "q")
+      ("Basic"
+       (("n" display-line-numbers-mode "line number" :toggle t)
+        ("N" cpkx/toggle-line-numbers-type "line number type")
+        ("L" linum-mode "Exact line number" :toggle t)
+        ("w" whitespace-mode "whitespace" :toggle t)
+        ("r" rainbow-mode "rainbow" :toggle t))
+       "Highlight"
+       (("S" highlight-symbol-mode "symbol" :toggle t)
+        ("l" hl-line-mode "line" :toggle t)
+        ("t" hl-todo-mode "todo" :toggle t)
+        ("i" color-identifiers-mode "identifiers" :toggle t))
+       "UI"
+       (("m" hide-mode-line-mode "mode line" :toggle t))
+       "Coding"
+       (("p" smartparens-global-mode "smartparens" :toggle t)
+        ("P" smartparens-global-strict-mode "smartparens strict" :toggle t)
+        ("c" flycheck-mode "flycheck" :toggle t)
+        ("s" flyspell-mode "flyspell" :toggle t)))))
 #+end_src
 
 ** Evil
@@ -639,10 +643,11 @@ Temporary solution to remove buffer face mode from modeline
     :config
     (evil-escape-mode))
 #+end_src
-*** TODO Evil Anzu (add hook)
+*** Evil Anzu (add hook)
 #+begin_src emacs-lisp
   (use-package evil-anzu
-    :diminish anzu-mode
+    :hook (after-init . global-anzu-mode)
+    :diminish (global-anzu-mode anzu-mode)
     :general
     (cpkx/leader-keys
       "rs" 'anzu-query-replace
@@ -1782,19 +1787,20 @@ Temporary solution to remove buffer face mode from modeline
 
 ** Productivity
 *** Syntax Check
-**** TODO Flycheck (add hook)
+**** Flycheck (add hook)
 #+begin_src emacs-lisp
   (defun cpkx/toggle-syntax-checking ()
     (interactive)
     (if (bound-and-true-p flycheck-mode)
-	(progn
-	  (flycheck-mode -1)
-	  (message "Flycheck mode disabled in current buffer"))
+        (progn
+          (flycheck-mode -1)
+          (message "Flycheck mode disabled in current buffer"))
       (progn
-	(flycheck-mode 1)
-	(message "Flycheck mode enabled in current buffer"))))
+        (flycheck-mode 1)
+        (message "Flycheck mode enabled in current buffer"))))
 
   (use-package flycheck
+    :hook (prog-mode . flycheck-mode)
     :init
     (cpkx/leader-keys
       "ts" 'cpkx/toggle-syntax-checking)
@@ -1823,51 +1829,47 @@ Temporary solution to remove buffer face mode from modeline
     (progn
       ;; Custom fringe indicator
       (when (and (fboundp 'define-fringe-bitmap)
-		 ;; (not syntax-checking-use-original-bitmaps)
-		 )
-	(define-fringe-bitmap 'cpkx-flycheck-fringe-indicator
-	  (vector #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00011100
-		  #b00111110
-		  #b00111110
-		  #b00111110
-		  #b00011100
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000
-		  #b00000000)))
+                 ;; (not syntax-checking-use-original-bitmaps)
+                 )
+        (define-fringe-bitmap 'cpkx-flycheck-fringe-indicator
+          (vector #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00011100
+                  #b00111110
+                  #b00111110
+                  #b00111110
+                  #b00011100
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000
+                  #b00000000)))
       (let ((bitmap 'cpkx-flycheck-fringe-indicator
-		    ))
-	(flycheck-define-error-level 'error
-				     :severity 2
-				     :overlay-category 'flycheck-error-overlay
-				     :fringe-bitmap bitmap
-				     :error-list-face 'flycheck-error-list-error
-				     :fringe-face 'flycheck-fringe-error)
-	(flycheck-define-error-level 'warning
-				     :severity 1
-				     :overlay-category 'flycheck-warning-overlay
-				     :fringe-bitmap bitmap
-				     :error-list-face 'flycheck-error-list-warning
-				     :fringe-face 'flycheck-fringe-warning)
-	(flycheck-define-error-level 'info
-				     :severity 0
-				     :overlay-category 'flycheck-info-overlay
-				     :fringe-bitmap bitmap
-				     :error-list-face 'flycheck-error-list-info
-				     :fringe-face 'flycheck-fringe-info))))
+                    ))
+        (flycheck-define-error-level 'error
+          :severity 2
+          :overlay-category 'flycheck-error-overlay
+          :fringe-bitmap bitmap
+          :error-list-face 'flycheck-error-list-error
+          :fringe-face 'flycheck-fringe-error)
+        (flycheck-define-error-level 'warning
+          :severity 1
+          :overlay-category 'flycheck-warning-overlay
+          :fringe-bitmap bitmap
+          :error-list-face 'flycheck-error-list-warning
+          :fringe-face 'flycheck-fringe-warning)
+        (flycheck-define-error-level 'info
+          :severity 0
+          :overlay-category 'flycheck-info-overlay
+          :fringe-bitmap bitmap
+          :error-list-face 'flycheck-error-list-info
+          :fringe-face 'flycheck-fringe-info))))
 #+end_src
-
-#+RESULTS:
-| use-package | flycheck/:config: Symbol’s function definition is void: cpkx/leader-keys | :error | nil |
-| use-package | flycheck/:init: Symbol’s function definition is void: cpkx/leader-keys   | :error | nil |
 
 **** Flycheck posframe
 #+begin_src emacs-lisp
@@ -2096,18 +2098,20 @@ Temporary solution to remove buffer face mode from modeline
     :init
     (add-hook 'smartparens-enabled-hook #'evil-smartparens-mode))
 #+end_src
-**** TODO Highlight Paren (add hook)
+**** Highlight Paren (add hook)
 #+begin_src emacs-lisp
   (use-package highlight-parentheses
     :diminish highlight-parentheses-mode
+    :hook (prog-mode . highlight-parentheses-mode)
     :config
     (setq hl-paren-delay 0)
     (setq hl-paren-colors '("Springgreen3"
-			    "IndianRed1"
-			    "IndianRed3"
-			    "IndianRed4"))
+                            "IndianRed1"
+                            "IndianRed3"
+                            "IndianRed4"))
     (set-face-attribute 'hl-paren-face nil :weight 'ultra-bold))
 #+end_src
+
 **** Rainbow
 #+begin_src emacs-lisp
   (use-package rainbow-delimiters
