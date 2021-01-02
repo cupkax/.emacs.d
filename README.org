@@ -1,5 +1,5 @@
 #+TITLE: Emacs Config
-#+PROPERTY: header-args emacs-lisp :tangle "~/.emacs.d/init.el"
+#+PROPERTY: header-args emacs-lisp :tangle "~/.emacs.d/init.el" :results silent :comments link
 
 * Table of Contents                                                     :TOC_2:
 - [[#early-init][=early init=]]
@@ -44,11 +44,13 @@
   - [[#window-management][Window Management]]
 - [[#directory-management][Directory Management]]
   - [[#ranger][Ranger]]
+  - [[#neotree][Neotree]]
   - [[#frequent-files][Frequent Files]]
 - [[#navigation][Navigation]]
   - [[#emacs-defaults][Emacs Defaults]]
   - [[#ace-link][Ace link]]
   - [[#avy][Avy]]
+  - [[#deft][Deft]]
   - [[#dumb-jump][Dumb Jump]]
   - [[#helm][Helm]]
   - [[#ivy][Ivy]]
@@ -61,12 +63,14 @@
 - [[#org][Org]]
   - [[#org-load-path][Org Load Path]]
   - [[#org-config][Org Config]]
+  - [[#org-journal][Org Journal]]
   - [[#org-ref][Org-Ref]]
   - [[#org-noter][Org-Noter]]
+  - [[#org-projectile][Org-Projectile]]
   - [[#pdf][PDF]]
   - [[#toc][TOC]]
 - [[#writing][Writing]]
-  - [[#word-check][Word Check]]
+  - [[#words][Words]]
   - [[#olivetti][Olivetti]]
   - [[#visual-fill-column][Visual Fill Column]]
   - [[#fix-word][Fix Word]]
@@ -76,8 +80,11 @@
   - [[#export][Export]]
 - [[#applications][Applications]]
   - [[#calendar][Calendar]]
+  - [[#epub][EPUB]]
+  - [[#ledger][Ledger]]
   - [[#projectile][Projectile]]
   - [[#pdf-1][PDF]]
+  - [[#spotify][Spotify]]
 - [[#start-server][Start Server]]
 - [[#end][End]]
   - [[#message-startup-time][Message Startup Time]]
@@ -108,14 +115,17 @@
 #+end_src
 ** Garbage Collection
 #+begin_src emacs-lisp
-  (defun cpkx/defer-garbage-collection ()
-    (setq gc-cons-threshold most-positive-fixnum))
+  ;; The default is 800 kilobytes.  Measured in bytes.
+  (setq gc-cons-threshold (* 50 1000 1000))
 
-  (defun cpkx/restore-garbage-collection ()
-    (setq gc-cons-threshold 800000))
-
-  (add-hook 'minibuffer-setup-hook #'cpkx/defer-garbage-collection)
-  (add-hook 'minibuffer-exit-hook #'cpkx/restore-garbage-collection)
+  ;; Profile emacs startup
+  (add-hook 'emacs-startup-hook
+            (lambda ()
+              (message "*** Emacs loaded in %s with %d garbage collections."
+                       (format "%.2f seconds"
+                               (float-time
+                                (time-subtract after-init-time before-init-time)))
+                       gcs-done)))
 #+end_src
 
 ** Define Constants
@@ -1098,8 +1108,96 @@ Temporary solution to remove buffer face mode from modeline
       "gg"     'ranger-goto-top))
 #+end_src
 
-#+RESULTS:
+** Neotree
+#+begin_src emacs-lisp
+  (defun neotree-find-project-root ()
+    (interactive)
+    (if (neo-global--window-exists-p)
+        (neotree-hide)
+      (let ((origin-buffer-file-name (buffer-file-name)))
+        (neotree-find (projectile-project-root))
+        (neotree-find origin-buffer-file-name))))
 
+  (use-package neotree
+    :commands neo-global--window-exists-p
+    :init
+    (progn
+      (setq neo-window-width 25
+            neo-create-file-auto-open t
+            neo-banner-message "Press ? for neotree help"
+            neo-show-updir-line nil
+            neo-mode-line-type 'neotree
+            neo-smart-open t
+            neo-dont-be-alone t
+            neo-persist-show nil
+            neo-show-hidden-files t
+            neo-auto-indent-point t
+            neo-modern-sidebar t
+            neo-vc-integration nil
+            neo-theme 'ascii)
+      (when (eq 'darwin system-type)
+        (setq neo-default-system-application "open"))
+      (cpkx/leader-keys
+        "fT" 'neotree-toggle
+        "ft" 'neotree-show
+        "pt" 'neotree-find-project-root))
+    :config
+    (progn
+      (cpkx/normal-keys
+        :keymaps 'neotree-mode-map
+        (kbd "<return>") (neotree-make-executor
+                          :file-fn 'neo-open-file
+                          :dir-fn 'neo-open-dir)
+        (kbd "<tab>") (neotree-make-executor
+                       :dir-fn 'neo-open-dir)
+        "z" (neotree-make-executor
+             :dir-fn 'neo-open-dir)
+        "ZZ" 'quit-window
+        "gd" (neotree-make-executor
+              :dir-fn 'neo-open-dired)
+        "gD" (neotree-make-executor
+              :dir-fn 'neo-open-dired)
+        "go" (neotree-make-executor
+              :file-fn 'neo-open-file
+              :dir-fn 'neo-open-dir)
+        "gO" 'neotree-quick-look
+        "gr" 'neotree-refresh
+        "q" 'neotree-hide
+        "H" 'neotree-hidden-file-toggle
+        "gh" 'neotree-hidden-file-toggle
+        (kbd "C-k") 'neotree-select-up-node
+        "gk" 'neotree-select-up-node
+        "[" 'neotree-select-up-node
+        (kbd "C-j") 'neotree-select-down-node
+        "gj" 'neotree-select-down-node
+        "]" 'neotree-select-down-node
+        "gv" 'neotree-open-file-in-system-application
+        "c" 'neotree-create-node
+        "y" 'neotree-copy-node
+        "r" 'neotree-rename-node
+        "R" 'neotree-change-root
+        "d" 'neotree-delete-node
+        "J" 'neotree-dir
+        "+" 'neotree-stretch-toggle
+        "=" 'neotree-stretch-toggle
+        "ge" 'neotree-enter
+        "j" 'neotree-next-line
+        "k" 'neotree-previous-line
+        ;; Unchanged keybings.
+        "a" (neotree-make-executor
+             :file-fn 'neo-open-file-ace-window)
+        "|" (neotree-make-executor
+             :file-fn 'neo-open-file-vertical-split)
+        "-" (neotree-make-executor
+             :file-fn 'neo-open-file-horizontal-split)
+        "S" 'neotree-select-previous-sibling-node
+        "s" 'neotree-select-next-sibling-node)
+      (cpkx/all-states-keys
+        "M-0" 'neotree-show)
+      (defun winum-assign-0-to-neotree ()
+        (when (string-match-p (buffer-name) ".*\\*NeoTree\\*.*") 10))
+      (add-to-list 'winum-assign-functions #'winum-assign-0-to-neotree)))
+#+end_src
 ** TODO Frequent Files
 #+begin_src emacs-lisp
   (defhydra hydra-frequently-accessed-files (:exit t)
@@ -1248,6 +1346,31 @@ Temporary solution to remove buffer face mode from modeline
     (interactive)
     (let ((avy-background nil))
       (call-interactively 'avy-goto-char-in-line)))
+#+end_src
+** Deft
+#+begin_src emacs-lisp
+  (use-package deft
+    :general
+    (cpkx/leader-keys
+      "an" 'deft)
+    :config
+    (setq deft-directory "~/org/"
+          deft-recursive t
+          deft-window-width 100
+          deft-use-filename-as-title t
+          deft-extensions '("org" "md" "txt")
+          deft-text-mode 'org-mode
+          deft-use-filename-as-title t
+          deft-use-filter-string-for-filename 't)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'deft-mode-map
+      "c" 'deft-filter-clear
+      "i" 'deft-toggle-incremental-search
+      "n" 'deft-new-file
+      "N" 'deft-new-file-named
+      "q" 'quit-window
+      "o" 'deft-open-file-other-window
+      "r" 'deft-rename-file))
 #+end_src
 ** Dumb Jump
 #+begin_src emacs-lisp
@@ -1694,47 +1817,108 @@ Temporary solution to remove buffer face mode from modeline
 #+end_src
 ** Languages
 *** Language Server Protocol
+**** LSP Mode
 #+begin_src emacs-lisp
-  (use-package ivy-xref
-    :init (if (< emacs-major-version 27)
-              (setq xref-show-xrefs-function #'ivy-xref-show-xrefs)
-            (setq xref-show-definitions-function #'ivy-xref-show-defs)))
-
   (use-package lsp-mode
-    :commands (lsp lsp-deferred)
-    :bind (:map lsp-mode-map
-                ("TAB" . completion-at-point))
+    :commands lsp
+    :diminish lsp-mode
     :init
-    (setq lsp-keymap-prefix "C-c l")  ;; Or 'C-l', 's-l'
-    :config
-    (lsp-enable-which-key-integration t)
-    :custom
-    (lsp-auto-guess-root nil)
-    (lsp-prefer-flymake nil) ; Use flycheck instead of flymake
-    (lsp-file-watch-threshold 2000)
-    (read-process-output-max (* 1024 1024))
-    (lsp-eldoc-hook nil))
+    (add-hook 'prog-mode-hook (lambda () (lsp-deferred)))
+    :general
+    (cpkx/leader-keys-major-mode
+      :keymaps 'lsp-mode-map
+      "=b" 'lsp-format-buffer
+      "=r" 'lsp-format-region)
+    (cpkx/leader-keys-minor-mode
+      :keymaps 'lsp-mode-map
+      "ss" 'lsp
+      "=b" 'lsp-format-buffer
+      "=r" 'lsp-format-region
+      "gd" 'lsp-find-definition
+      "gr" 'lsp-find-references
+      ;; backend
+      "bd" #'lsp-describe-session
+      "br" #'lsp-workspace-restart
+      "bs" #'lsp-workspace-shutdown)
 
-  (use-package lsp-ui
-    :after lsp-mode
-    :diminish
-    :hook (lsp-mode . lsp-ui-mode)
-    :custom
-    (lsp-ui-doc-position 'bottom)
-    (lsp-ui-doc-header t)
-    (lsp-ui-doc-include-signature t)
-    (lsp-ui-doc-border (face-foreground 'default))
-    (lsp-ui-sideline-enable nil)
-    (lsp-ui-sideline-ignore-duplicate t)
-    (lsp-ui-sideline-show-code-actions nil)
     :config
-    (setq lsp-ui-sideline-enable t)
-    (setq lsp-ui-sideline-show-hover nil)
-    (setq lsp-ui-doc-position 'bottom)
-    (lsp-ui-doc-show))
+    (setq lsp-enable-which-key-integration t
+          lsp-restart 'ignore
+          lsp-eldoc-hook nil
+          lsp-eldoc-enable-hover nil
+          lsp-auto-configure t
+          lsp-enable-symbol-highlighting nil
+          lsp-enable-file-watchers nil
+          lsp-auto-guess-root nil
+          lsp-prefer-flymake nil ; Use flycheck instead of flymake
+          lsp-file-watch-threshold 2000
+          lsp-signature-render-documentation nil
+          read-process-output-max (* 1024 1024)))
 #+end_src
 
+**** Company LSP
+#+begin_src emacs-lisp
+  (use-package company-lsp
+    :commands company-lsp
+    :init
+    (add-hook 'prog-mode-hook
+              (lambda ()
+                (add-to-list (make-local-variable 'company-backends) '(company-lsp company-files))))
+    :config
+    (setq company-lsp-enable-recompletion t
+          company-lsp-async t
+          company-lsp-cache-candidates 'auto
+          company-lsp-match-candidate-predicate 'company-lsp-match-candidate-prefix))
+#+end_src
+**** LSP UI
+#+begin_src emacs-lisp
+  (use-package lsp-ui
+    :after lsp-mode
+    :init
+    (add-hook 'lsp-mode-hook 'lsp-ui-mode)
+    :general
+    (:keymaps 'lsp-ui-peek-mode-map
+     "h" 'lsp-ui-peek--select-prev-file
+     "j" 'lsp-ui-peek--select-next
+     "k" 'lsp-ui-peek--select-prev
+     "l" 'lsp-ui-peek--select-next-file)
+    (cpkx/normal-keys
+      :keymaps 'lsp-ui-imenu-mode-map
+      "h" 'lsp-ui-imenu--prev-kind
+      "l" 'lsp-ui-imenu--next-kind
+      "d" 'lsp-ui-imenu--view
+      "M-d" 'lsp-ui-imenu--visit
+      "q" 'lsp-ui-imenu--kill)
+    :config
+    (cpkx/leader-keys-major-mode
+      :keymaps 'lsp-ui-mode-map
+      "p" '(:ignore t :wk "peek")
+      "pd" 'lsp-ui-peek-find-definitions
+      "pr" 'lsp-ui-peek-find-references)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'prog-mode-map
+      "u" 'cpkx/toggle-lsp-ui-mode)
+    (setq lsp-ui-sideline-delay 0
+          lsp-ui-peek-always-show t
+          lsp-ui-doc-use-childframe t
+          lsp-ui-doc-enable nil
+          lsp-ui-flycheck-enable t
+          lsp-ui-sideline-show-hover nil))
+   ;;;###autoload
+  (defun cpkx/toggle-lsp-ui-mode ()
+    (interactive)
+    (if (bound-and-true-p lsp-ui-doc-mode)
+        (progn
+          (lsp-ui-sideline-mode -1)
+          (lsp-ui-doc-mode -1)
+          (message "Lsp ui sideline/doc mode disabled in current buffer"))
+      (progn
+        (lsp-ui-sideline-mode 1)
+        (lsp-ui-doc-mode 1)
+        (message "Lsp ui sideline/doc mode enabled in current buffer"))))
+#+end_src
 *** Lisp
+**** Lisp Config
 #+begin_src emacs-lisp
   (defun cpkx/lisp-indent-function (indent-point state)
     (let ((normal-indent (current-column))
@@ -1783,6 +1967,20 @@ Temporary solution to remove buffer face mode from modeline
 
   (with-eval-after-load 'lisp-mode
     (setq lisp-indent-function 'cpkx/lisp-indent-function))
+#+end_src
+
+**** Parinfer
+#+begin_src emacs-lisp
+  (use-package parinfer
+    :general
+    (cpkx/leader-keys
+      "tP" 'parinfer-toggle-mode)
+    (setq parinfer-extensions
+          '(defaults       ; should be included.
+             evil           ; If you use Evil.
+             smart-tab      ; C-b & C-f jump positions and smart shift with tab & S-tab.
+             smart-yank))   ; Yank behavior depend on mode.
+    (add-hook 'emacs-lisp-mode-hook #'parinfer-mode))
 #+end_src
 
 ** Productivity
@@ -2181,16 +2379,376 @@ Temporary solution to remove buffer face mode from modeline
   (defun cpkx/org-mode-setup ()
     (org-indent-mode)
     (diminish 'org-indent-mode)
-    (variable-pitch-mode 1)
-    (auto-fill-mode 0))
+    (variable-pitch-mode 1))
 
   (use-package org
-    :diminish t
-    :hook (org-mode . cpkx/org-mode-setup)
+    :diminish
+    :hook  (org-mode . cpkx/org-mode-setup)
     :config
-    (setq org-directory "~/Dropbox/org"))
+    (add-hook 'org-mode-hook (lambda () (setq truncate-lines nil)))
+    (add-hook 'org-mode-hook
+              (lambda ()
+                (add-to-list (make-local-variable 'company-backends) '(company-ispell company-capf))))
+    (add-hook 'org-mode-hook 'turn-on-auto-fill)
+    (setq org-src-tab-acts-natively t
+          org-edit-src-auto-save-idle-delay 5
+          org-src-ask-before-returning-to-edit-buffer nil)
+    (setq org-directory "~/Dropbox/org")
+    (setq org-agenda-files (apply 'append
+                                  (mapcar
+                                   (lambda (directory)
+                                     (directory-files-recursively
+                                      directory org-agenda-file-regexp))
+                                   '("~/Dropbox/org/" ))))
+    (setq org-agenda-files (apply 'append
+                                  (mapcar
+                                   (lambda (directory)
+                                     (directory-files-recursively
+                                      directory org-agenda-file-regexp))
+                                   '("~/Dropbox/org/" ))))
+    (setq org-list-allow-alphabetical t
+          org-log-done 'time
+          org-refile-use-outline-path t
+          org-outline-path-complete-in-steps nil
+          org-imenu-depth 5
+          org-src-window-setup 'split-window-below
+          org-export-in-background t
+          org-export-async-init-file (concat user-emacs-directory "init-org-async.el")
+          org-modules '(ol-w3m ol-bbdb ol-bibtex ol-docview ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-eww org-special-blocks)
+          org-todo-keywords '((sequence "TODO(t)" "WAIT(w@/!)" "|" "DONE(d!)" "CANCELLED(c@)")))
+    (add-to-list 'org-file-apps '("\\.pdf\\'" . emacs))
+    (advice-add 'org-export-to-file
+                :before #'(lambda (backend file &optional async subtreep visible-only body-only ext-plist
+                                      post-process) (save-buffer ()))))
+#+end_src
+**** Org Bindings
+#+begin_src emacs-lisp
+  (use-package org
+    :general
+    ;; org-mode
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      "'" 'org-edit-special
+      "c" 'org-capture
+      "Cc" 'org-clock-cancel
+      "Ci" 'org-clock-in
+      "Co" 'org-clock-out
+      "Cr" 'org-resolve-clocks
+      "dd" 'org-deadline
+      "ds" 'org-schedule
+      "dt" 'org-time-stamp
+      "dT" 'org-time-stamp-inactive
+      "ee" 'org-export-dispatch
+      "ep" (lambda () (interactive) (org-latex-export-to-pdf 'async))
+      "eb" 'org-beamer-export-to-pdf
+      "fi" 'org-feed-goto-inbox
+      "fu" 'org-feed-update-all
+
+      "a" 'org-agenda
+
+      "u" 'org-update-checkbox-count
+      "Tc" 'org-toggle-checkbox
+      "Te" 'org-toggle-pretty-entities
+      "Th" 'org-toggle-heading
+      "Ti" 'org-toggle-inline-images
+      "Tl" 'org-toggle-link-display
+      "Tt" 'org-show-todo-tree
+      "TT" 'org-todo
+      "TV" 'space-doc-mode
+      "Tx" 'org-toggle-latex-fragment
+
+      ;; More cycling options (timestamps, headlines, items, properties)
+      "L" 'org-shiftright
+      "H" 'org-shiftleft
+      "J" 'org-shiftdown
+      "K" 'org-shiftup
+
+      ;; Change between TODO sets
+      "C-S-l" 'org-shiftcontrolright
+      "C-S-h" 'org-shiftcontrolleft
+      "C-S-j" 'org-shiftcontroldown
+      "C-S-k" 'org-shiftcontrolup
+
+      ;; Subtree editing
+      "sa" 'org-toggle-archive-tag
+      "sA" 'org-archive-subtree
+      "sb" 'org-tree-to-indirect-buffer
+      "sh" 'org-promote-subtree
+      "sj" 'org-move-subtree-down
+      "sk" 'org-move-subtree-up
+      "sl" 'org-demote-subtree
+      "sn" 'org-narrow-to-subtree
+      "sN" 'widen
+      "sr" 'org-refile
+      "ss" 'org-sparse-tree
+      "sS" 'org-sort
+
+      ;; tables
+      "ta" 'org-table-align
+      "tb" 'org-table-blank-field
+      "tc" 'org-table-convert
+      "tdc" 'org-table-delete-column
+      "tdr" 'org-table-kill-row
+      "te" 'org-table-eval-formula
+      "tE" 'org-table-export
+      "th" 'org-table-previous-field
+      "tH" 'org-table-move-column-left
+      "tic" 'org-table-insert-column
+      "tih" 'org-table-insert-hline
+      "tiH" 'org-table-hline-and-move
+      "tir" 'org-table-insert-row
+      "tI" 'org-table-import
+      "tj" 'org-table-next-row
+      "tJ" 'org-table-move-row-down
+      "tK" 'org-table-move-row-up
+      "tl" 'org-table-next-field
+      "tL" 'org-table-move-column-right
+      "tn" 'org-table-create
+      "tN" 'org-table-create-with-table.el
+      "tr" 'org-table-recalculate
+      "ts" 'org-table-sort-lines
+      "ttf" 'org-table-toggle-formula-debugger
+      "tto" 'org-table-toggle-coordinate-overlays
+      "tw" 'org-table-wrap-region
+
+      ;; Source blocks / org-babel
+      "bp"     'org-babel-previous-src-block
+      "bn"     'org-babel-next-src-block
+      "be"     'org-babel-execute-maybe
+      "bo"     'org-babel-open-src-block-result
+      "bv"     'org-babel-expand-src-block
+      "bu"     'org-babel-goto-src-block-head
+      "bg"     'org-babel-goto-named-src-block
+      "br"     'org-babel-goto-named-result
+      "bb"     'org-babel-execute-buffer
+      "bs"     'org-babel-execute-subtree
+      "bd"     'org-babel-demarcate-block
+      "bt"     'org-babel-tangle
+      "bf"     'org-babel-tangle-file
+      "bc"     'org-babel-check-src-block
+      "bj"     'org-babel-insert-header-arg
+      "bl"     'org-babel-load-in-session
+      "bi"     'org-babel-lob-ingest
+      "bI"     'org-babel-view-src-block-info
+      "bz"     'org-babel-switch-to-session
+      "bZ"     'org-babel-switch-to-session-with-code
+      "ba"     'org-babel-sha1-hash
+      "bx"     'org-babel-do-key-sequence-in-edit-buffer
+      "b."     'spacemacs/org-babel-transient-state/body
+      "*" 'org-ctrl-c-star
+      "-" 'org-ctrl-c-minus
+      "#" 'org-update-statistics-cookies
+      "RET"   'org-ctrl-c-ret
+      "M-RET" 'org-meta-return
+      ;; attachments
+      "A" 'org-attach
+      ;; insertion
+      "id" 'org-insert-drawer
+      "ie" 'org-set-effort
+      "if" 'org-footnote-new
+      "ih" 'org-insert-heading
+      "iH" 'org-insert-heading-after-current
+      "iK" 'spacemacs/insert-keybinding-org
+      "il" 'org-insert-link
+      "in" 'org-add-note
+      "ip" 'org-set-property
+      "is" 'org-insert-subheading
+      "it" 'org-set-tags-command)
+    ;; org-agenda
+    (cpkx/leader-keys
+      "ao#" 'org-agenda-list-stuck-projects
+      "ao/" 'org-occur-in-agenda-files
+      "aoa" 'org-agenda-list
+      "aoc" 'org-capture
+      "aoe" 'org-store-agenda-views
+      "aofi" 'org-feed-goto-inbox
+      "aofu" 'org-feed-update-all
+      "aokg" 'org-clock-goto
+      "aoki" 'org-clock-in-last
+      "aokj" 'org-clock-jump-to-current-clock
+      "aoko" 'org-clock-out
+      "aokr" 'org-resolve-clocks
+      "aol" 'org-store-link
+      "aom" 'org-tags-view
+      "aoo" 'org-agenda
+      "aos" 'org-search-view
+      "aot" 'org-todo-list
+      ;; SPC C- capture/colors
+      "Cc" 'org-capture)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      :major-modes t
+      "b" '(:ignore t :which-key "babel")
+      "C" '(:ignore t :which-key "Clocks")
+      ;; "c" '(:ignore t :which-key "org-capture")
+      "d" '(:ignore t :which-key "dates")
+      "e" '(:ignore t :which-key "export")
+      "f" '(:ignore t :which-key "feeds")
+      "i" '(:ignore t :which-key "insert")
+      "iD" '(:ignore t :which-key "download")
+      "s" '(:ignore t :which-key "trees/subtrees")
+      "T" '(:ignore t :which-key "toggles")
+      "t" '(:ignore t :which-key "tables")
+      "td" '(:ignore t :which-key "delete")
+      "ti" '(:ignore t :which-key "insert")
+      "tt" '(:ignore t :which-key "toggle")
+      "x" '(:ignore t :which-key "text"))
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      "op" 'org-open-at-point)
+    (:keymaps 'org-mode-map
+     :states '(normal visual motion)
+     "RET" 'org-open-at-point)
+    (cpkx/all-states-keys
+      :keymaps 'org-read-date-minibuffer-local-map
+      "M-h" 'calendar-backward-day
+      "M-l" 'calendar-forward-day
+      "M-j" 'calendar-forward-week
+      "M-k" 'calendar-backward-week
+      "M-J" 'calendar-forward-month
+      "M-K" 'calendar-backward-month))
+
+  (defun cpkx/org-meta-return ()
+    (interactive)
+    (end-of-line)
+    (org-meta-return))
+
+  (global-set-key [remap org-meta-return] 'cpkx/org-meta-return)
+#+end_src
+*** Org-Agenda
+**** Org-Agenda Config
+#+begin_src emacs-lisp
+  (use-package org
+    :general
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-agenda-mode-map
+      "." 'hydra-org-agenda/body)
+    :config
+    (defhydra hydra-org-agenda (:pre (setq which-key-inhibit t) :post (setq which-key-inhibit nil) :hint nil)
+
+      ;; Entry
+      ("h:" org-agenda-set-tags)
+      ("hA" org-agenda-archive-default)
+      ("hk" org-agenda-kill)
+      ("hp" org-agenda-priority)
+      ("hr" org-agenda-refile)
+      ("ht" org-agenda-todo)
+
+      ;; Visit entry
+      ("SPC" org-agenda-show-and-scroll-up)
+      ("TAB" org-agenda-goto :exit t)
+      ("RET" org-agenda-switch-to :exit t)
+      ("o"   link-hint-open-link :exit t)
+
+      ;; Date
+      ("ds" org-agenda-schedule)
+      ("dS" (lambda () (interactive)
+              (let ((current-prefix-arg '(4)))
+                (call-interactively 'org-agenda-schedule))))
+      ("dd" org-agenda-deadline)
+      ("dt" org-agenda-date-prompt)
+      ("dD" (lambda () (interactive)
+              (let ((current-prefix-arg '(4)))
+                (call-interactively 'org-agenda-deadline))))
+      ("+" org-agenda-do-date-later)
+      ("-" org-agenda-do-date-earlier)
+
+      ;; View
+      ("vd" org-agenda-day-view)
+      ("vw" org-agenda-week-view)
+      ("vt" org-agenda-fortnight-view)
+      ("vm" org-agenda-month-view)
+      ("vy" org-agenda-year-view)
+      ("vn" org-agenda-later)
+      ("vp" org-agenda-earlier)
+      ("vr" org-agenda-reset-view)
+
+      ;; Toggle mode
+      ("tf" org-agenda-follow-mode)
+      ("tl" org-agenda-log-mode)
+      ("ta" org-agenda-archives-mode)
+      ("tr" org-agenda-clockreport-mode)
+      ("td" org-agenda-toggle-diary)
+
+      ;; Filter
+      ("ft" org-agenda-filter-by-tag)
+      ("fr" org-agenda-filter-by-tag-refine)
+      ("fc" org-agenda-filter-by-category)
+      ("fh" org-agenda-filter-by-top-headline)
+      ("fx" org-agenda-filter-by-regexp)
+      ("fd" org-agenda-filter-remove-all)
+
+      ;; Clock
+      ("cI" org-agenda-clock-in :exit t)
+      ("cj" org-agenda-clock-goto :exit t)
+      ("cO" org-agenda-clock-out)
+      ("cq" org-agenda-clock-cancel)
+
+      ;; Other
+      ("q" nil :exit t)
+      ("gr" org-agenda-redo)
+      ("." org-agenda-goto-today)
+      ("gd" org-agenda-goto-date)))
 #+end_src
 
+**** Idle Org Agenda
+#+begin_src emacs-lisp
+  (use-package idle-org-agenda
+    :after org-agenda
+    :config
+    (setq idle-org-agenda-interval 600)
+    (advice-add 'idle-org-agenda--jump-to-agenda :before #'eyebrowse-switch-to-window-config-0)
+    (idle-org-agenda-mode))
+#+end_src
+
+*** Org-Bullets
+#+begin_src emacs-lisp
+  (use-package org-bullets
+    :hook (org-mode . org-bullets-mode)
+    :config
+    (setq org-bullets-bullet-list '("●" "◉" "⊙" "○" "◌")))
+#+end_src
+
+*** Org-Capture
+#+begin_src emacs-lisp
+  (use-package org
+    :config
+    (setq org-default-notes-file (concat org-directory "/capture/capture.org"))
+    (setq org-capture-templates
+          (quote (
+                  ("t" "todo" entry (file+headline "~/Dropbox/org/capture/capture.org" "Tasks")
+                   "* TODO %?\n\s\s%U\n")
+                  ("n" "note" entry (file+headline "~/Dropbox/org/capture/capture.org" "Notes")
+                   "* %?\n\s\s%U\n")
+                  ("a" "appointments")
+                  ("aa" "appointments" entry (file "~/Dropbox/org/appts/appts.org")
+                   "* TODO %?")
+                  ("ar" "repeating appointments" entry (file "~/Dropbox/org/appts/appts_re.org")
+                   "* TODO %?")
+                  )))
+    :init
+    (with-eval-after-load 'org-capture
+      (cpkx/leader-keys-major-mode
+        :keymaps 'org-capture-mode-map
+        "a" 'org-capture-kill
+        "c" 'org-capture-finalize
+        "k" 'org-capture-kill
+        "r" 'org-capture-refile))
+    (add-hook 'org-capture-mode-hook #'evil-normalize-keymaps))
+#+end_src
+
+*** Org-Src
+#+begin_src emacs-lisp
+  (use-package org
+    :init
+    (with-eval-after-load 'org-src
+      (cpkx/leader-keys-major-mode
+        :keymaps 'org-src-mode-map
+        "c" 'org-edit-src-exit
+        "a" 'org-edit-src-abort
+        "k" 'org-edit-src-abort))
+    (add-hook 'org-src-mode-hook #'evil-normalize-keymaps))
+#+end_src
 *** Org Source Code Blocks
 **** Org Structure Template
 #+begin_src emacs-lisp
@@ -2212,7 +2770,37 @@ Saves
                                            'run-at-end 'only-in-org-mode)))
 #+end_src
 
-** Org-Ref
+** Org Journal
+#+begin_src emacs-lisp
+  (use-package org-journal
+    :init
+    (setq org-journal-dir "~/Dropbox/org/Journal"
+          org-journal-file-type 'monthly)
+    :general
+    (cpkx/leader-keys
+      "aoj" '(:ignore t :wk "org-journal")
+      "aojj" 'org-journal-new-entry
+      "aojs" 'org-journal-search-forever)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'calendar-mode-map
+      "r" 'org-journal-read-entry
+      "i" 'org-journal-new-date-entry
+      "n" 'org-journal-next-entry
+      "p" 'org-journal-previous-entry
+      "s" 'org-journal-search-forever
+      "w" 'org-journal-search-calendar-week
+      "m" 'org-journal-search-calendar-month
+      "y" 'org-journal-search-calendar-year)
+    (cpkx/normal-keys
+      :keymaps 'calendar-mode-map
+      "q" 'calendar-exit)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-journal-mode-map
+      "j" 'org-journal-new-entry
+      "n" 'org-journal-open-next-entry
+      "p" 'org-journal-open-previous-entry))
+#+end_src
+** TODO Org-Ref
 #+begin_src emacs-lisp
   ;(use-package org-ref
   ;  :after bibtex
@@ -2244,6 +2832,16 @@ Saves
 ** Org-Noter
 #+begin_src emacs-lisp
   (use-package org-noter
+      :general
+    (cpkx/leader-keys-major-mode
+      :keymaps 'pdf-view-mode-map
+      "n" 'org-noter
+      "i" 'org-noter-insert-note
+      "k" 'org-noter-kill-session)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      "nn" 'org-noter
+      "nk" 'org-noter-kill-session)
     :config
     (setq org-noter-default-notes-file-names  '("notes.org"))
     (setq org-noter-notes-search-path         '("~/git/phd/notes"))
@@ -2253,11 +2851,22 @@ Saves
     (setq org-noter-notes-window-location     'horizontal-split))
 #+end_src
 
+** Org-Projectile
+#+begin_src emacs-lisp
+  (use-package org-projectile
+    :commands (org-projectile-location-for-project)
+    :init
+    (with-eval-after-load 'org-capture
+      (require 'org-projectile))
+    :config
+    (setq org-projectile-projects-file "~/Dropbox/org/projectes.org")
+    (push (org-projectile-project-todo-entry) org-capture-templates))
+#+end_src
 ** PDF
 *** Org-PDFTools
 #+begin_src emacs-lisp
-;(use-package org-pdftools
-;  :hook (org-mode . org-pdftools-setup-link))
+(use-package org-pdftools
+  :hook (org-load . org-pdftools-setup-link))
 #+end_src
 
 *** Org-Noter-PDFTools
@@ -2276,7 +2885,30 @@ Saves
 #+end_src
 
 * Writing
-** Word Check
+** Words
+*** Academic Phrases
+#+begin_src emacs-lisp
+  (use-package academic-phrases
+    :general
+    (cpkx/leader-keys-major-mode
+      :keymaps 'LaTeX-mode-map
+      "iP" 'academic-phrases
+      "iS" 'academic-phrases-by-section)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'org-mode-map
+      "iP" 'academic-phrases
+      "iS" 'academic-phrases-by-section))
+#+end_src
+*** Artbollocks
+#+begin_src emacs-lisp
+  (use-package artbollocks-mode
+    :diminish artbollocks-mode
+    :hook (org-mode . artbollocks-mode)
+    :config
+    (setq artbollocks-jargon nil
+          artbollocks-passive-voice nil))
+#+end_src
+
 *** Flyspell
 **** Flyspell mode
 #+begin_src emacs-lisp :tangle no
@@ -2384,6 +3016,37 @@ Saves
       results))
 
   (advice-add 'ispell-lookup-words :override #'cpkx/ispell-lookup-words)
+#+end_src
+*** Langtool
+#+begin_src emacs-lisp
+  (use-package langtool
+    :general
+    (cpkx/leader-keys
+      "Sc" 'langtool-check
+      "SC" 'langtool-correct-buffer
+      "Sq" 'langtool-check-done))
+#+end_src
+*** Synosaurus
+#+begin_src emacs-lisp
+  (use-package synosaurus
+    :commands (synosaurus-lookup synosaurus-choose-and-replace)
+    :init
+    (cpkx/leader-keys
+      "xSl" 'synosaurus-lookup
+      "xSr" 'synosaurus-choose-and-replace)
+    :config
+    (setq synosaurus-backend 'synosaurus-backend-wordnet
+          synosaurus-choose-method 'ivy-read))
+#+end_src
+*** Wordnut
+#+begin_src emacs-lisp
+  (use-package wordnut
+    :general
+    (cpkx/leader-keys
+      "a M-w" 'wordnut-search)
+    (cpkx/normal-keys
+      :keymaps 'wordnut-mode-map
+      "q" 'quit-window))
 #+end_src
 ** Olivetti
 #+begin_src emacs-lisp
@@ -2528,6 +3191,132 @@ Saves
       "ac" 'calendar))
 #+end_src 
 
+** EPUB
+*** Nov
+#+begin_src emacs-lisp
+  (use-package neotree
+    :commands neo-global--window-exists-p
+    :init
+    (progn
+      (setq neo-window-width 25
+            neo-create-file-auto-open t
+            neo-banner-message "Press ? for neotree help"
+            neo-show-updir-line nil
+            neo-mode-line-type 'neotree
+            neo-smart-open t
+            neo-dont-be-alone t
+            neo-persist-show nil
+            neo-show-hidden-files t
+            neo-auto-indent-point t
+            neo-modern-sidebar t
+            neo-vc-integration nil
+            neo-theme 'ascii)
+      (when (eq 'darwin system-type)
+        (setq neo-default-system-application "open"))
+      (cpkx/leader-keys
+        "fT" 'neotree-toggle
+        "ft" 'neotree-show
+        "pt" 'neotree-find-project-root))
+    :config
+    (progn
+      (cpkx/normal-keys
+        :keymaps 'neotree-mode-map
+        (kbd "<return>") (neotree-make-executor
+                          :file-fn 'neo-open-file
+                          :dir-fn 'neo-open-dir)
+        (kbd "<tab>") (neotree-make-executor
+                       :dir-fn 'neo-open-dir)
+        "z" (neotree-make-executor
+             :dir-fn 'neo-open-dir)
+        "ZZ" 'quit-window
+        "gd" (neotree-make-executor
+              :dir-fn 'neo-open-dired)
+        "gD" (neotree-make-executor
+              :dir-fn 'neo-open-dired)
+        "go" (neotree-make-executor
+              :file-fn 'neo-open-file
+              :dir-fn 'neo-open-dir)
+        "gO" 'neotree-quick-look
+        "gr" 'neotree-refresh
+        "q" 'neotree-hide
+        "H" 'neotree-hidden-file-toggle
+        "gh" 'neotree-hidden-file-toggle
+        (kbd "C-k") 'neotree-select-up-node
+        "gk" 'neotree-select-up-node
+        "[" 'neotree-select-up-node
+        (kbd "C-j") 'neotree-select-down-node
+        "gj" 'neotree-select-down-node
+        "]" 'neotree-select-down-node
+        "gv" 'neotree-open-file-in-system-application
+        "c" 'neotree-create-node
+        "y" 'neotree-copy-node
+        "r" 'neotree-rename-node
+        "R" 'neotree-change-root
+        "d" 'neotree-delete-node
+        "J" 'neotree-dir
+        "+" 'neotree-stretch-toggle
+        "=" 'neotree-stretch-toggle
+        "ge" 'neotree-enter
+        "j" 'neotree-next-line
+        "k" 'neotree-previous-line
+        ;; Unchanged keybings.
+        "a" (neotree-make-executor
+             :file-fn 'neo-open-file-ace-window)
+        "|" (neotree-make-executor
+             :file-fn 'neo-open-file-vertical-split)
+        "-" (neotree-make-executor
+             :file-fn 'neo-open-file-horizontal-split)
+        "S" 'neotree-select-previous-sibling-node
+        "s" 'neotree-select-next-sibling-node)
+      (cpkx/all-states-keys
+        "M-0" 'neotree-show)
+      (defun winum-assign-0-to-neotree ()
+        (when (string-match-p (buffer-name) ".*\\*NeoTree\\*.*") 10))
+      (add-to-list 'winum-assign-functions #'winum-assign-0-to-neotree)))
+#+end_src
+** Ledger
+*** Ledger Mode
+#+begin_src emacs-lisp
+  (use-package ledger-mode
+    :mode ("\\.\\(ledger\\|ldg\\)\\'" . ledger-mode)
+    :init
+    (progn
+      (setq ledger-post-amount-alignment-column 62)
+      (cpkx/leader-keys-major-mode
+        :keymaps 'ledger-mode-map
+        "hd" 'ledger-delete-current-transaction
+        "a" 'ledger-add-transaction
+        "b" 'ledger-post-edit-amount
+        "c" 'ledger-toggle-current
+        "C" 'ledger-mode-clean-buffer
+        "l" 'ledger-display-ledger-stats
+        "p" 'ledger-display-balance-at-point
+        "q" 'ledger-post-align-xact
+        "R" 'ledger-reconcile
+        "r" 'ledger-report
+        "t" 'ledger-insert-effective-date)
+      (cpkx/leader-keys-major-mode
+        :keymaps 'ledger-reconcile-mode-map
+        "a" 'ledger-reconcile-add
+        "q" 'ledger-reconcile-quit
+        "t" 'ledger-reconcile-change-target
+        "RET" 'ledger-reconcile-finish)))
+#+end_src
+
+*** Evil Ledger
+#+begin_src emacs-lisp
+  (use-package evil-ledger
+    :diminish evil-ledger-mode
+    :after ledger-mode
+    :config
+    (setq evil-ledger-sort-key "S")
+    (add-hook 'ledger-mode-hook #'evil-ledger-mode))
+#+end_src
+*** Flycheck Ledger
+#+begin_src emacs-lisp
+  (use-package flycheck-ledger
+    :after (ledger flycheck))
+#+end_src
 ** Projectile
 #+begin_src emacs-lisp
   (use-package projectile
@@ -2577,30 +3366,129 @@ Saves
       (require 'pdf-occur)
       (require 'pdf-sync)
       (pdf-tools-install :no-query)
-      (add-hook 'pdf-view-mode-hook (lambda() (pdf-view-midnight-minor-mode 1)))
-      (add-hook 'pdf-view-mode-hook (lambda () (cua-mode 0)))
-      (add-hook 'pdf-view-mode-hook #'pdf-tools-enable-minor-modes)))
+
+      (defhydra hydra-zoom-pdf ()
+        "zoom-pdf"
+        ("i" pdf-view-enlarge "in")
+        ("o" pdf-view-shrink "out")
+        ("w" pdf-view-fit-width-to-window "width")
+        ("p" pdf-view-fit-page-to-window "page")
+        ("q" nil "quit"))
+      (cpkx/leader-keys-major-mode
+        :keymaps 'pdf-view-mode-map
+        "z" 'hydra-zoom-pdf/body))
+    (add-hook 'pdf-view-mode-hook (lambda()
+                                    (display-line-numbers-mode -1)
+                                    (set (make-local-variable 'evil-normal-state-cursor) (list nil))
+                                    (set (make-local-variable 'evil-insert-state-cursor) (list nil))
+                                    (set (make-local-variable 'evil-visual-state-cursor) (list nil))))
+    (add-hook 'pdf-view-mode-hook (lambda() (pdf-view-midnight-minor-mode 1)))
+    ;;turn off cua so copy works
+    (add-hook 'pdf-view-mode-hook (lambda () (cua-mode 0)))
+    (add-hook 'pdf-view-mode-hook #'pdf-tools-enable-minor-modes)
+    :init
+    (cpkx/normal-keys
+      ;; :states '(normal)
+      :keymaps 'pdf-view-mode-map
+      ;; navigation
+      "J" '(lambda() (interactive) (pdf-view-next-line-or-next-page 35))
+      "j" '(lambda() (interactive) (pdf-view-next-line-or-next-page 10))
+      "K" '(lambda() (interactive) (pdf-view-previous-line-or-previous-page 35))
+      "k" '(lambda() (interactive) (pdf-view-previous-line-or-previous-page 10))
+      "h" '(lambda() (interactive) (image-backward-hscroll 20))
+      "l" '(lambda() (interactive) (image-forward-hscroll 20))
+      "u" 'pdf-view-scroll-down-or-previous-page
+      "d" 'pdf-view-scroll-up-or-next-page
+      "f" 'pdf-view-next-page
+      "b" 'pdf-view-previous-page
+      "gg"  'pdf-view-first-page
+      "G"  'pdf-view-last-page
+      ;; scale/fit
+      "w" 'pdf-view-fit-width-to-window
+      "H" 'pdf-view-fit-height-to-window
+      "p" 'pdf-view-fit-page-to-window
+      ;; Search
+      "/" 'isearch-forward
+      "?" 'isearch-backward
+      ;; Actions
+      "r"   'pdf-view-revert-buffer
+      "o"   'pdf-links-action-perform
+      "O"   'pdf-outline
+      "zr"  'pdf-view-scale-reset
+      "C-s" 'isearch-forward)
+    :general
+    (:states '(normal visual)
+     :keymaps 'pdf-outline-buffer-mode-map
+     "RET" 'pdf-outline-follow-link
+     "M-RET" 'pdf-outline-follow-link-and-quit
+     "TAB" 'pdf-outline-toggle-subtree
+     "q" 'pdf-outline-quit)
+    (cpkx/leader-keys-major-mode
+      ;; :states 'normal
+      :keymaps 'pdf-view-mode-map
+      :major-modes t
+      ;; Slicing image
+      "s" '(:ignore t :which-key "slice/occur")
+      "sm" 'pdf-view-set-slice-using-mouse
+      "sb" 'pdf-view-set-slice-from-bounding-box
+      "sr" 'pdf-view-reset-slice
+      ;; Annotations
+      "a" '(:ignore t :which-key "annotation")
+      "aD" 	'pdf-annot-delete
+      "at" 	'pdf-annot-attachment-dired
+      "ah" 	'pdf-annot-add-highlight-markup-annotation
+      "al" 	'pdf-annot-list-annotations
+      "am" 	'pdf-annot-add-markup-annotation
+      "ao" 	'pdf-annot-add-strikeout-markup-annotation
+      "as" 	'pdf-annot-add-squiggly-markup-annotation
+      "at" 	'pdf-annot-add-text-annotation
+      "au" 	'pdf-annot-add-underline-markup-annotation
+      "b" 'pdf-isearch-sync-backward
+      ;; Fit image to window
+      "f" '(:ignore t :which-key "fit")
+      "fw" 'pdf-view-fit-width-to-window
+      "fh" 'pdf-view-fit-height-to-window
+      "fp" 'pdf-view-fit-page-to-window
+      ;; Other
+      "ss" 'pdf-occur
+      "p" 'pdf-misc-print-document
+      "O" 'pdf-outline
+      "m" 'pdf-view-midnight-minor-mode)
+    (cpkx/normal-keys
+      :keymaps 'pdf-occur-buffer-mode-map
+      "d" 'pdf-occur-view-occurrence
+      "RET" 'pdf-occur-goto-occurrence
+      "q" 'tablist-quit)
+    (cpkx/leader-keys-major-mode
+      :keymaps 'LaTeX-mode-map
+      "M-f" 'pdf-sync-forward-search))
+#+end_src
+
+** Spotify
+#+begin_src emacs-lisp
+  (use-package spotify
+    :general
+    (cpkx/leader-keys
+      "amp" 'spotify-playpause
+      "amn" 'spotify-next
+      "amN" 'spotify-previous))
 #+end_src
 * Start Server
 #+begin_src emacs-lisp
-  ;(use-package server
-  ;  :ensure nil
-  ;  :ghook ('after-init-hook #'server-start))
+  (use-package server
+    :ensure nil
+    :hook (after-init . server-start))
 #+end_src
+
 * End
 ** Message Startup Time
 #+begin_src emacs-lisp
   (setq inhibit-startup-echo-area-message "cpkx")
   (setq inhibit-startup-screen t)
-  (setq emacs-load-start-time (current-time))
-  (when (require 'time-date nil t)
-    (message "Emacs startup time: %.2f seconds."
-             (time-to-seconds (time-since emacs-load-start-time))))
 #+end_src
 
 ** Garbage Collection Threshold
 #+begin_src emacs-lisp
-  (setq gc-cons-threshold 800000
-        gc-cons-percentage 0.1
-        file-name-handler-alist cpkx--file-name-handler-alist)
+  ;; Make gc pauses faster by decreasing the threshold.
+  (setq gc-cons-threshold (* 2 1000 1000))
 #+end_src
