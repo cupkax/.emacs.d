@@ -70,3 +70,115 @@
 (straight-use-package 'use-package)
 (use-package git) ;; ensure we can install from git sources
 #+end_src
+* Better Defaults
+** Clean .emacs.d
+*** Autosave
+#+begin_src emacs-lisp
+  (setq auto-save-visited-mode t)
+  (setq auto-save-default t)
+  (setq auto-save-timeout 20)
+  (setq auto-save-interval 20)
+#+end_src
+
+*** Backups
+#+begin_src emacs-lisp
+  (setq kept-new-versions 10)
+  (setq kept-old-versions 0)
+  (setq delete-old-versions t)
+  (setq backup-by-copying t)
+  (setq version-control t)
+  (setq vc-make-backup-files t)
+  (setq delete-by-moving-to-trash t)
+#+end_src
+*** History
+#+begin_src emacs-lisp
+  (savehist-mode 1)
+  (setq history-length t)
+  (setq history-delete-duplicates t)
+  (setq savehist-save-minibuffer-history 1)
+  (setq savehist-additional-variables
+        '(kill-ring
+          search-ring
+          regexp-search-ring))
+#+end_src
+*** Recent
+#+begin_src emacs-lisp
+  (use-package recentf
+    :ensure nil
+    :init
+    (add-hook 'find-file-hook (lambda () (unless recentf-mode
+                                      (recentf-mode)
+                                      (recentf-track-opened-file))))
+    :config
+      (setq recentf-max-saved-items 2000)
+      (setq recentf-auto-cleanup 'never)
+      (recentf-mode 1))
+#+end_src
+ 
+*** No-littering
+#+begin_src emacs-lisp
+  (use-package no-littering
+    :config
+    (with-eval-after-load 'recentf
+      (add-to-list 'recentf-exclude no-littering-var-directory)
+      (add-to-list 'recentf-exclude no-littering-etc-directory))
+
+    (setq auto-save-file-name-transforms  ; autosaved-file-name~
+          `((".*" ,(no-littering-expand-var-file-name "auto-save/") t))
+
+          custom-file (no-littering-expand-etc-file-name "custom.el"))
+
+    (if (file-exists-p custom-file)
+        (load-file custom-file)))
+#+end_src
+* Org
+** Org Load Path
+*** Fix Org-Git-Version
+#+begin_src emacs-lisp
+(defun cpkx/fix-org-git-version ()
+  "The Git version of org-mode.
+  Inserted by installing org-mode or when a release is made."
+  (require 'git)
+  (let ((git-repo (expand-file-name
+                   "straight/repos/org/" user-emacs-directory)))
+    (string-trim
+     (git-run "describe"
+              "--match=release\*"
+              "--abbrev=6"
+              "HEAD"))))
+#+end_src
+*** Fix Org-Release
+#+begin_src emacs-lisp
+(defun cpkx/fix-org-release ()
+  "The release version of org-mode.
+  Inserted by installing org-mode or when a release is made."
+  (require 'git)
+  (let ((git-repo (expand-file-name
+                   "straight/repos/org/" user-emacs-directory)))
+    (string-trim
+     (string-remove-prefix
+      "release_"
+      (git-run "describe"
+               "--match=release\*"
+               "--abbrev=0"
+               "HEAD")))))
+#+end_src
+*** Installation
+#+begin_src emacs-lisp
+(use-package org
+  :config
+  ;; these depend on the 'straight.el fixes' above
+  (defalias #'org-git-version #'cpkx/fix-org-git-version)
+  (defalias #'org-release #'cpkx/fix-org-release)
+  (require 'org-habit)
+  (require 'org-capture)
+  (require 'org-tempo))
+#+end_src
+** Org Config
+#+begin_src emacs-lisp
+  (defun cpkx/org-mode-setup()
+    (org-indent-mode)
+    (variable-pitch-mode 1))
+  (use-package org
+    :hook (org-mode . cpkx/org-mode-setup))
+#+end_src
