@@ -3,17 +3,31 @@
 #+PROPERTY: header-args emacs-lisp :tangle init.el :results silent :comments link
 
 * Early =init.el=
+** Lexical Binding
 #+begin_src emacs-lisp :tangle early-init.el
-;;; -*- lexical-binding: t; -*-
-(setq gc-cons-threshold most-positive-fixnum)
-(defvar default-file-name-handler-alist file-name-handler-alist)
-(setq file-name-handler-alist nil)
+  ;;; -*- lexical-binding: t; -*-
+#+end_src
+** Garbage Collection
+#+begin_src emacs-lisp :tangle early-init.el
+ (setq gc-cons-threshold most-positive-fixnum)
+#+end_src
+** File name handler
+#+begin_src emacs-lisp :tangle early-init.el
+  (defvar default-file-name-handler-alist file-name-handler-alist)
+  (setq file-name-handler-alist nil)
 
-(add-hook 'emacs-startup-hook
-          (lambda ()
-            (setq file-name-handler-alist default-file-name-handler-alist)) 100)
-(setq package-enable-at-startup nil)
-(setq frame-inhibit-implied-resize t)
+  (add-hook 'emacs-startup-hook
+            (lambda ()
+              (setq file-name-handler-alist default-file-name-handler-alist)) 100)
+#+end_src
+** Disable =package.el=
+#+begin_src emacs-lisp :tangle early-init.el
+  (setq package-enable-at-startup nil)
+#+end_src
+** Visuals
+#+begin_src emacs-lisp :tangle early-init.el 
+  (setq frame-inhibit-implied-resize t
+        inhibit-startup-screen           t)
 #+end_src
 * Initial
 ** Lexical Binding
@@ -42,6 +56,19 @@
 ** Set Default Language
 #+begin_src emacs-lisp
 (setenv "LANG" "en_GB")
+#+end_src
+** =utf-8-unix= System
+#+begin_src emacs-lisp
+  (defun doom-modeline-conditional-buffer-encoding ()
+    "We expect the encoding to be LF UTF-8, so only show the modeline when this is not the case"
+    (setq-local doom-modeline-buffer-encoding
+                (unless (or (eq buffer-file-coding-system 'utf-8-unix)
+                            (eq buffer-file-coding-system 'utf-8)))))
+
+  (add-hook 'after-change-major-mode-hook #'doom-modeline-conditional-buffer-encoding)
+
+  (prefer-coding-system 'utf-8-unix)
+  (set-default-coding-systems 'utf-8)
 #+end_src
 ** Uniform Starting Directory
 #+begin_src emacs-lisp
@@ -131,6 +158,208 @@
     (if (file-exists-p custom-file)
         (load-file custom-file)))
 #+end_src
+#+end_src
+* UI/UX & Other Visuals
+** Fonts & Symbols
+*** Font
+#+begin_src emacs-lisp
+  ;; Set the font face based on platform
+  (set-face-attribute 'default nil :font "FiraCode Nerd Font"  :height 100)
+
+  ;; Set the fixed pitch face
+  (set-face-attribute 'fixed-pitch nil :font "FiraCode Nerd Font" :height 100)
+
+  ;; Set the variable pitch face
+  (set-face-attribute 'variable-pitch nil :font "Alegreya" :height 120)
+#+end_src
+*** Symbols
+**** Unicode
+#+begin_src emacs-lisp
+(defun cpkx/replace-unicode-font-mapping (block-name old-font new-font)
+  (let* ((block-idx (cl-position-if
+                     (lambda (i) (string-equal (car i) block-name))
+                     unicode-fonts-block-font-mapping))
+         (block-fonts (cadr (nth block-idx unicode-fonts-block-font-mapping)))
+         (updated-block (cl-substitute new-font old-font block-fonts :test 'string-equal)))
+    (setf (cdr (nth block-idx unicode-fonts-block-font-mapping))
+          `(,updated-block))))
+
+(use-package unicode-fonts
+  :ensure t
+  :custom
+  (unicode-fonts-skip-font-groups '(low-quality-glyphs))
+  :config
+  ;; Fix the font mappings to use the right emoji font
+  (mapcar
+   (lambda (block-name)
+     (cpkx/replace-unicode-font-mapping block-name "Apple Color Emoji" "Noto Color Emoji"))
+   '("Dingbats"
+     "Emoticons"
+     "Miscellaneous Symbols and Pictographs"
+     "Transport and Map Symbols"))
+  (unicode-fonts-setup))
+#+end_src
+**** All the icons
+#+begin_src emacs-lisp
+(use-package all-the-icons
+  :init
+  (add-hook 'after-init-hook (lambda () (require 'all-the-icons)))
+  :config
+  (setq all-the-icons-scale-factor 1.0))
+#+end_src
+**** Prettify Symbols
+#+begin_src emacs-lisp
+(global-prettify-symbols-mode 1)
+(defun cpkx/add-pretty-symb ()
+  (setq prettify-symbols-alist
+        '(
+          ("lambda" . 955)
+          ("delta" . 120517)
+          ("epsilon" . 120518)
+          ("->" . 8594)
+          ("<=" . 8804)
+          (">=" . 8805)
+          )))
+(add-hook 'prog-mode-hook 'cpkx/add-pretty-symb)
+(add-hook 'org-mode-hook  'cpkx/add-pretty-symb)
+#+end_src
+** Themes
+#+begin_src emacs-lisp
+(setq custom-safe-themes t)
+(use-package doom-themes
+  :config
+  ;Flash mode-line on error
+  (doom-themes-visual-bell-config)
+
+  ;Corrects org-mode’s native fontification
+  (doom-themes-org-config)
+
+  ;An interactive funtion to switch themes.
+  (defun cpkx/switch-theme ()
+  (interactive)
+  (disable-theme (intern (car (mapcar #'symbol-name custom-enabled-themes))))
+  (call-interactively #'load-theme))
+
+  ;Set Theme
+  (load-theme 'doom-dracula t))
+#+end_src
+** Modeline
+*** Doom Modeline
+#+begin_src emacs-lisp
+(use-package doom-modeline
+  :hook (after-init . doom-modeline-mode)
+  :custom
+  ;; Don't compact font caches during GC. Windows Laggy Issue
+  (inhibit-compacting-font-caches t)
+  (doom-modeline-height 15)
+  (doom-modeline-slp t)
+  (doom-modeline-minor-modes t)
+  (doom-modeline-persp-name nil)
+  (doom-modeline-icon t)
+  (doom-modeline-major-mode-color-icon t))
+#+end_src
+*** Current Time
+#+begin_src emacs-lisp
+(setq display-time-24hr-format t)
+(setq display-time-default-load-average nil)
+(setq display-time-day-and-date t)
+(display-time-mode)
+#+end_src
+*** Yes/No -> y/n
+#+begin_src emacs-lisp
+(fset 'yes-or-no-p 'y-or-n-p)
+#+end_src
+* Productivity
+** Format All
+#+begin_src emacs-lisp
+  (use-package format-all
+    :bind ("C-c C-f" . format-all-buffer))
+#+end_src
+** Helpful
+#+begin_src emacs-lisp
+(use-package helpful
+  :custom
+  (counsel-describe-function-function #'helpful-callable)
+  (counsel-describe-variable-function #'helpful-variable)
+  :bind
+  ([remap describe-function] . counsel-describe-function)
+  ([remap describe-command] . helpful-command)
+  ([remap describe-variable] . counsel-describe-variable)
+  ([remap describe-key] . helpful-key))
+#+end_src
+** Paren
+*** Smart Paren
+#+begin_src emacs-lisp
+  (use-package smartparens
+    :config
+    (smartparens-global-mode t))
+#+end_src
+*** Rainbow
+#+begin_src emacs-lisp
+  (use-package rainbow-delimiters
+    :hook (prog-mode . rainbow-delimiters-mode))
+#+end_src
+*** Highlight paren
+#+begin_src emacs-lisp
+(show-paren-mode 1)
+#+end_src
+* Completion
+** Ivy
+*** Basic Setup
+#+begin_src emacs-lisp
+  (use-package ivy
+    :diminish ivy-mode)
+#+end_src
+*** Counsel
+#+begin_src emacs-lisp
+
+#+end_src
+** Company
+*** Company-Mode
+#+begin_src emacs-lisp
+  (use-package company
+    :diminish company-mode
+    :init
+    (progn
+      (add-hook 'after-init-hook 'global-company-mode))
+    :config
+    (setq company-idle-delay 0.0
+          company-echo-delay 0
+          company-tooltip-idle-delay 0
+          company-tooltip-align-annotations t
+          company-minimum-prefix-length 1
+          company-dabbrev-ignore-case nil
+          company-dabbrev-downcase nil
+          company-dabbrev-code-other-buffers 'code
+          company-dabbrev-code-time-limit 5
+          company-backends '(company-keywords
+                             company-dabbrev-code)
+          company-transformers '(company-sort-by-backend-importance)))
+#+end_src
+*** Company-Box
+#+begin_src emacs-lisp
+(use-package company-box
+  :diminish company-box-mode
+  :hook (company-mode . company-box-mode))
+#+end_src
+*** Company-Prescient
+#+begin_src emacs-lisp
+  (use-package company-prescient
+    :after company
+    :config
+    (company-prescient-mode))
+#+end_src
+*** Company-Posframe
+#+begin_src emacs-lisp
+  (use-package company-posframe
+    :diminish company-posframe-mode
+    :after company
+    :config
+    (setq company-posframe-show-indicator   nil
+          company-posframe-show-metadata    nil
+          company-posframe-quickhelp-delay  nil)
+    (company-posframe-mode 1))
+#+end_src
 * Org
 ** Org Load Path
 *** Fix Org-Git-Version
@@ -178,7 +407,7 @@
 #+begin_src emacs-lisp
   (defun cpkx/org-mode-setup()
     (org-indent-mode)
-    (variable-pitch-mode 1))
+    (variable-pitch-mode 0))
   (use-package org
     :hook (org-mode . cpkx/org-mode-setup))
 #+end_src
